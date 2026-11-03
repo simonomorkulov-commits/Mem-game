@@ -1,8 +1,9 @@
 import * as THREE from './vendor/three.module.js';
 import { MEMES, PORTAL_X } from './data.js';
 import { move, portalAt } from './game.js';
+import { createCharacter, disposeCharacter } from './characters.js';
 
-export async function createWorld(canvas, onPortal, onWalk) {
+export async function createWorld(canvas, onPortal, onWalk, characterId = 'azamat') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
   renderer.shadowMap.enabled = true;
@@ -98,26 +99,7 @@ export async function createWorld(canvas, onPortal, onWalk) {
   });
 
   const character = new THREE.Group(); character.position.set(0, 0, 4); scene.add(character);
-  const skin = material('#ffe2b9'), jacket = material('#baff73'), pants = material('#252333');
-  const torso = box(.7, .75, .42, jacket, 0, 1.07, 0, character);
-  box(.12, .54, .045, ink, 0, 1.1, -.23, character);
-  box(.17, .12, .03, material('#f3ffe0'), .19, 1.22, -.24, character);
-  const head = box(.65, .62, .59, skin, 0, 1.77, 0, character);
-  box(.69, .19, .63, ink, 0, 2.02, 0, character);
-  box(.18, .25, .06, ink, -.24, 1.88, -.29, character);
-  box(.065, .085, .025, ink, -.14, 1.77, -.3, character);
-  box(.065, .085, .025, ink, .14, 1.77, -.3, character);
-  box(.12, .035, .025, ink, 0, 1.63, -.3, character);
-  const limbs = [];
-  for (const side of [-1, 1]) {
-    const leg = new THREE.Group(); leg.position.set(side * .19, .69, 0); character.add(leg);
-    box(.28, .52, .3, pants, 0, -.25, 0, leg);
-    box(.3, .17, .46, material('#d8cef4'), 0, -.53, -.05, leg);
-    const arm = new THREE.Group(); arm.position.set(side * .48, 1.38, 0); character.add(arm);
-    box(.24, .46, .32, jacket, 0, -.19, 0, arm);
-    box(.21, .18, .28, skin, 0, -.49, 0, arm);
-    limbs.push({ leg, arm, side });
-  }
+  let rig = createCharacter(characterId); character.add(rig.root);
   const halo = new THREE.Mesh(new THREE.RingGeometry(.57, .63, 40), new THREE.MeshBasicMaterial({ color: '#c2ff82', side: THREE.DoubleSide, transparent: true, opacity: .75 }));
   halo.rotation.x = -Math.PI / 2; halo.position.y = .015; character.add(halo);
   const destination = new THREE.Mesh(new THREE.RingGeometry(.26, .32, 32), new THREE.MeshBasicMaterial({ color: '#dbffb0', side: THREE.DoubleSide, transparent: true, opacity: .8 }));
@@ -189,12 +171,12 @@ export async function createWorld(canvas, onPortal, onWalk) {
       character.rotation.y += difference * Math.min(dt * 14, 1);
     }
     character.position.set(position.x, walking ? Math.abs(Math.sin(phase)) * .06 : Math.sin(elapsed * 2) * .025, position.z);
-    for (const { leg, arm, side } of limbs) {
+    for (const { leg, arm, side } of rig.limbs) {
       leg.rotation.x = walking ? Math.sin(phase) * .55 * side : 0;
       arm.rotation.x = walking ? -Math.sin(phase) * .5 * side : Math.sin(elapsed * 2) * .035;
     }
-    head.rotation.z = Math.sin(elapsed * 1.4) * .025;
-    torso.rotation.z = walking ? Math.sin(phase) * .025 : 0;
+    rig.head.rotation.z = Math.sin(elapsed * 1.4) * .025;
+    rig.torso.rotation.z = walking ? Math.sin(phase) * .025 : 0;
     halo.material.opacity = .55 + Math.sin(elapsed * 3) * .13;
     dust.rotation.y = elapsed * .012;
     renderer.render(scene, camera);
@@ -209,6 +191,11 @@ export async function createWorld(canvas, onPortal, onWalk) {
     walkToPortal(index) { if (index >= 0 && index < 3) walkTo(PORTAL_X[index], -4.9); },
     setDirection(code, down) { if (!active) return; if (down) { keys.add(code); target = null; destination.visible = false; } else keys.delete(code); },
     setJoystick(x, z) { if (!active) return; joystick = { x, z }; if (Math.hypot(x, z) > .15) { target = null; destination.visible = false; } },
+    setCharacter(id) {
+      if (rig.id === id) return;
+      character.remove(rig.root); disposeCharacter(rig.root);
+      rig = createCharacter(id); character.add(rig.root);
+    },
     async setRound(round) {
       await loadTextures(round.options);
       round.options.forEach((meme, i) => {

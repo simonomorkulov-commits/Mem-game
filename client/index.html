@@ -9,6 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./mobile-library.css">
+  <link rel="stylesheet" href="./characters.css">
 </head>
 <body>
   <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -51,7 +52,7 @@
         </div>
         <div class="menu-overlay" id="menu-overlay">
           <div class="scene-title"><span class="tiny-tag">ВКЛЮЧИ ЗВУК</span><h2>Твой слух.<br>Твой <em>мемный</em><br>выход.</h2><p>Проведи персонажа в картинку,<br>которая подходит к звуку.</p></div>
-          <div class="start-area"><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><span class="start-caption">9 комнат <i>·</i> 3 жизни <i>·</i> много знакомых звуков</span></div>
+          <div class="start-area"><button id="character-button" class="character-button"><img id="selected-character-portrait" alt=""><span><small>ТВОЙ ГЕРОЙ</small><b id="selected-character-name">Азамат</b></span><span class="change-character">Сменить ›</span></button><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><span class="start-caption">9 комнат <i>·</i> 3 жизни <i>·</i> много знакомых звуков</span></div>
           <div class="floating-note">наушники —<br>хорошая идея <span>♪</span></div>
         </div>
         <div class="play-overlay" id="play-overlay" hidden>
@@ -74,7 +75,16 @@
     <footer><span>игра мемов <span class="footer-dot">✳</span> только хорошие вайбы</span><span>Сделано для тех, кто слишком долго сидит в интернете.</span></footer>
   </div>
   <dialog id="rules-dialog"><form method="dialog"><button class="dialog-close icon-button" aria-label="Закрыть"><svg><use href="#i-x"/></svg></button></form><span class="eyebrow">ТВОЙ ПУТЬ В МЕМЫ</span><h2>Всё просто.<br>Доверься ушам.</h2><ol><li><b>Слушай звук.</b> Его можно повторить кнопкой «Ещё раз» или пробелом.</li><li><b>Найди подходящую картинку.</b> На телефоне используй джойстик или нажми на картинку. На компьютере — WASD, стрелки или клавиши 1, 2, 3.</li><li><b>Зайди в портал.</b> Верный ответ даёт 100 очков. Серия ответов добавляет до 100 бонусных очков за комнату.</li></ol><p class="dialog-note">Пройди 9 комнат. У тебя 3 жизни. Таймера нет — можно подумать. Esc ставит игру на паузу.</p><form method="dialog"><button class="button primary">Понятно, я в деле <svg><use href="#i-check"/></svg></button></form></dialog>
-  <dialog id="pause-dialog"><span class="eyebrow">МЕМЫ ПОДОЖДУТ</span><h2>Пауза.</h2><p>Комната никуда не денется.</p><button class="button primary" id="resume-button"><svg><use href="#i-play"/></svg>Продолжить</button><button class="button secondary" id="home-button">В главное меню</button></dialog>
+  <dialog id="pause-dialog"><span class="eyebrow">МЕМЫ ПОДОЖДУТ</span><h2>Пауза.</h2><p>Комната никуда не денется.</p><button class="button primary" id="resume-button"><svg><use href="#i-play"/></svg>Продолжить</button><button class="button secondary" id="pause-character-button">Выбрать персонажа</button><button class="button secondary" id="home-button">В главное меню</button></dialog>
+  <dialog id="character-dialog" class="character-dialog">
+    <div class="character-heading"><span class="eyebrow">ГЕРОИ КЫРГЫЗСТАНА</span><button id="character-close" class="icon-button" aria-label="Закрыть выбор персонажа"><svg><use href="#i-x"/></svg></button></div>
+    <h2>С кем пойдём в мемы?</h2><p>Выбирай своего героя. Оба готовы к приключению.</p>
+    <div class="character-cards" role="group" aria-label="Выбор персонажа">
+      <button class="character-card" data-character="azamat" aria-pressed="true"><span class="character-check">✓</span><span class="character-art"><img id="portrait-azamat" alt="Азамат в белом ак-калпаке и бирюзовом чапане с золотым орнаментом"></span><b>Азамат</b><small>Ак-калпак и чапан</small></button>
+      <button class="character-card" data-character="aigerim" aria-pressed="false"><span class="character-check">✓</span><span class="character-art"><img id="portrait-aigerim" alt="Айгерим с косами, в кыргызском праздничном платье и головном уборе шөкүлө"></span><b>Айгерим</b><small>Праздничный кыргызский наряд</small></button>
+    </div>
+    <button id="character-apply" class="button primary">Выбрать: Азамат</button><p class="character-note">Выбор сохранится в этом браузере.</p>
+  </dialog>
   <dialog id="library-dialog" class="library-dialog">
     <div class="library-heading"><div><span class="eyebrow">ТВОЯ ОБЩАЯ КОЛЛЕКЦИЯ</span><h2>Мои мемы<span id="library-count">0</span></h2></div><button id="library-close" class="icon-button" aria-label="Закрыть коллекцию"><svg><use href="#i-x"/></svg></button></div>
     <p class="library-description">Картинка + её звук. Добавляй с телефона или компьютера — мемы появятся у всех игроков.</p>

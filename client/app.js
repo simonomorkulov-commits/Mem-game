@@ -3,6 +3,7 @@ import { MEMES } from './data.js';
 import { newGame, answer, nextRound } from './game.js';
 import { initLibrary, getCatalog } from './library.js';
 import { bindJoystick } from './joystick.js';
+import { initCharacterPicker, selectedCharacter } from './character-picker.js';
 
 const $ = id => document.getElementById(id);
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -200,6 +201,11 @@ initLibrary({
   onOpen() { if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); } },
   onClose() { if (paused && !$('pause-dialog').open) resume(); }
 });
+const characterPicker = initCharacterPicker({
+  onOpen() { if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); } },
+  onClose() { if (paused && !$('pause-dialog').open) resume(); },
+  onSelect(id) { world?.setCharacter(id); }
+});
 window.addEventListener('keydown', event => {
   if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
   if (event.code === 'Escape' && state?.status === 'playing') { event.preventDefault(); pause(); }
@@ -210,8 +216,9 @@ window.addEventListener('keydown', event => {
 document.addEventListener('visibilitychange', () => { if (document.hidden && !document.querySelector('dialog[open]')) pause(); });
 
 try {
-  world = await createWorld($('scene'), enterPortal, () => { document.querySelectorAll('[data-portal]').forEach(b => b.classList.remove('selected')); });
+  world = await createWorld($('scene'), enterPortal, () => { document.querySelectorAll('[data-portal]').forEach(b => b.classList.remove('selected')); }, selectedCharacter());
   $('loading-overlay').hidden = true;
+  characterPicker.preparePreviews();
 } catch (error) {
   console.error('Room initialization failed:', error);
   showError('Для 3D-комнаты нужен WebGL. Включи аппаратное ускорение или открой игру в современном Chrome, Edge, Firefox или Safari.');
