@@ -1,0 +1,166 @@
+/* Phone layouts keep the game and the start action inside the first screen. */
+.home-tools { display: flex; align-items: center; gap: 18px; }
+.landscape-settings-button { display: none; }
+.settings-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.settings-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.settings-heading h2 { margin: 12px 0 6px; }
+.settings-heading .icon-button { min-width: 46px; min-height: 46px; }
+.settings-hint { font-size: 13px; color: #c8bbd6; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; gap: 22px; min-height: 74px; border-bottom: 1px solid #47394f; cursor: pointer; }
+.setting-row b { display: block; font-size: 14px; font-weight: 600; }
+.setting-row small { display: block; color: #ac9dbb; margin-top: 6px; font-size: 12px; line-height: 1.5; }
+.setting-row input { width: 25px; height: 25px; flex-shrink: 0; accent-color: var(--lime); }
+.settings-volume { display: block; margin-top: 23px; font-size: 14px; }
+.settings-volume > b { float: right; color: var(--lime); }
+.settings-volume input { display: block; margin: 9px 0; width: 100%; height: 42px; accent-color: var(--lime); cursor: pointer; }
+.settings-note { text-align: center; font-size: 11px; color: #b1a0be; }
+
+@media (max-width: 960px), (pointer: coarse) {
+  :root { --dialog-top: max(20px, env(safe-area-inset-top)); }
+  body:not(.in-game) .page-shell { height: 100svh; min-height: 0; display: flex; flex-direction: column; padding: 0 max(14px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(14px, env(safe-area-inset-left)); }
+  .header { flex: 0 0 calc(68px + env(safe-area-inset-top)); height: auto; padding-top: env(safe-area-inset-top); }
+  .brand { font-size: 17px; gap: 10px; }
+  .brand-mark { width: 37px; height: 37px; }
+  .header-actions { gap: 7px; }
+  .header-actions .icon-button { width: 44px; height: 48px; }
+  .library-button { min-height: 48px; padding: 0 12px; font-size: 12px; }
+  .library-button span { margin-left: 5px; }
+  body:not(.in-game) main { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .intro { flex-shrink: 0; padding: 15px 0 17px; }
+  .intro > .eyebrow { display: none; }
+  .intro h1 { font-size: clamp(23px, 6.6vw, 31px); line-height: 1.13; letter-spacing: -.9px; margin: 0 0 10px; }
+  .intro h1 i { display: none; }
+  .intro p { font-size: 12px; }
+  body:not(.in-game) .game-frame { height: auto; min-height: 0; max-height: none; flex: 1; border-radius: 20px; }
+  .scene-title { display: none; }
+  .menu-overlay { background: linear-gradient(0deg, #161321 0%, #161321ed 30%, #16132188 48%, transparent 68%); }
+  .room-label { top: 17px; left: 17px; font-size: 9px; }
+  .start-area { left: 16px; right: 16px; bottom: 14px; }
+  .character-button { width: 100%; min-height: 54px; border-radius: 12px; padding: 4px 12px; }
+  .character-button b { font-size: 15px; }
+  .character-button small { font-size: 9px; letter-spacing: 1px; }
+  .change-character { font-size: 12px; }
+  .start-area #start-button { width: 100%; min-height: 56px; font-size: 16px; border-radius: 13px; }
+  .start-caption { margin-top: 10px; font-size: 10px; }
+  .floating-note, .how-it-works, footer { display: none; }
+  .below-game { flex-shrink: 0; min-height: 54px; padding: 3px 0; }
+  .below-game > span, .below-game > .volume { display: none; }
+  .home-tools { width: 100%; justify-content: space-between; gap: 8px; }
+  .home-tools button { min-height: 48px; flex: 1; text-align: center; font-size: 13px; color: #c1b3d0; }
+  body.in-game .game-frame { height: 100dvh; }
+  .hud { height: 70px; top: env(safe-area-inset-top); padding: 0 14px; }
+  .hud-room > span { font-size: 9px; }
+  .hud-room b { font-size: 25px; }
+  .hud-room small { font-size: 12px; }
+  .hud-progress { display: none; }
+  .hud-right { gap: 13px; }
+  .lives svg { width: 15px; height: 15px; }
+  .score { font-size: 16px; min-width: 42px; }
+  .hud .icon-button { width: 48px; height: 48px; }
+  .sound-prompt { top: calc(78px + env(safe-area-inset-top)); min-height: 48px; max-width: calc(100% - 28px); padding: 4px 5px 4px 13px; font-size: 12px; gap: 9px; }
+  #sound-status { overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+  .sound-prompt button { min-height: 42px; font-size: 12px; padding: 8px 12px; }
+  .sound-prompt button svg { width: 16px; height: 16px; }
+  .sound-prompt kbd { display: none; }
+  .movement-tip { display: none; }
+  .touch-controls { left: max(20px, env(safe-area-inset-left)); right: max(20px, env(safe-area-inset-right)); bottom: max(22px, calc(env(safe-area-inset-bottom) + 10px)); }
+  .joystick { width: 132px; height: 132px; opacity: .48; background: #d0b9ec18; border: 1.5px solid #e1cffa99; box-shadow: inset 0 0 20px #21152722; backdrop-filter: blur(1px); transition: opacity .12s; }
+  .joystick.active { opacity: .78; border-color: #ede3fd; }
+  .joystick-thumb { width: 56px; height: 56px; left: calc(50% - 28px); top: calc(50% - 28px); background: #d6c4f077; border: 1.5px solid #f3eaffbb; box-shadow: 0 2px 12px #0c081d33; }
+  .joystick-arrows { color: #e1d4f3; opacity: .6; }
+  .joystick-area > span, .touch-replay { display: none !important; }
+  .controls-right .touch-controls { flex-direction: row-reverse; }
+  .feedback-card h2 { font-size: clamp(28px, 7vw, 36px); }
+  .feedback-card p { font-size: 14px; }
+  .feedback-card .eyebrow { font-size: 9px; line-height: 1.6; }
+  .feedback-card .button { min-width: 0; min-height: 56px; width: 100%; font-size: 15px; border-radius: 12px; }
+  .feedback-points { font-size: 30px; }
+  .feedback-points small { font-size: 12px; }
+  .loading-overlay { padding: 25px; font-size: 14px; line-height: 1.6; }
+  .error-overlay h2 { font-size: 26px; }
+  .error-overlay p { font-size: 14px; }
+  .error-overlay .button { min-height: 54px; font-size: 15px; }
+  .library-dialog, .character-dialog, #rules-dialog { --dialog-top: max(20px, env(safe-area-inset-top)); position: fixed; inset: 0; margin: 0; width: 100%; max-width: none; height: var(--visual-height, 100dvh); max-height: var(--visual-height, 100dvh); border: 0; border-radius: 0; padding: var(--dialog-top) 18px max(22px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 90px; }
+  .library-heading, .character-heading, .settings-heading { position: sticky; top: calc(-1 * var(--dialog-top)); margin: calc(-1 * var(--dialog-top)) -18px 0; padding: var(--dialog-top) 18px 12px; background: #201b2af7; z-index: 4; border-bottom: 1px solid #4b3a55; }
+  .library-heading .icon-button, .character-heading .icon-button { min-width: 48px; min-height: 48px; }
+  .library-heading h2 { font-size: 29px; }
+  .library-description { font-size: 14px; }
+  .library-status { font-size: 13px; line-height: 1.6; }
+  .field-label { font-size: 14px; }
+  .field-label input { min-height: 52px; font-size: 17px; scroll-margin-block: 100px; }
+  .field-label input::placeholder { font-size: 14px; }
+  .file-picker { min-height: 128px; padding: 16px 8px; }
+  .file-picker b { font-size: 13px; }
+  .file-picker small { font-size: 11px; }
+  .upload-preview audio { height: 48px; }
+  .upload-form .button { position: sticky; bottom: 0; z-index: 2; min-height: 56px; font-size: 15px; border-radius: 12px; }
+  .builtins-toggle { padding: 20px 0; }
+  .builtins-toggle b { font-size: 14px; }
+  .builtins-toggle small { font-size: 12px; }
+  .builtins-toggle input { width: 26px; height: 26px; }
+  .collection-heading h3 { font-size: 14px; }
+  .text-button { min-height: 48px; font-size: 14px; }
+  .meme-item b { font-size: 14px; }
+  .meme-item small { font-size: 12px; }
+  .meme-item .text-button { font-size: 13px; min-height: 44px; }
+  .remove-meme { width: 48px; height: 48px; }
+  .character-dialog h2 { font-size: 28px; margin-top: 23px; }
+  .character-dialog > p { font-size: 13px; }
+  .character-art { height: clamp(155px, 29svh, 265px); flex-basis: clamp(155px, 29svh, 265px); }
+  .character-card > b { font-size: 19px; }
+  .character-card > small { font-size: 12px; min-height: 36px; }
+  .character-dialog #character-apply { position: sticky; bottom: 0; min-height: 56px; z-index: 3; }
+  .character-dialog .character-note { font-size: 12px; }
+  #rules-dialog .dialog-close { width: 48px; height: 48px; top: var(--dialog-top); right: 18px; }
+  #rules-dialog > .eyebrow { max-width: calc(100% - 65px); min-height: 45px; font-size: 10px; }
+  #rules-dialog h2 { font-size: 30px; }
+  #rules-dialog ol, #rules-dialog p { font-size: 15px; line-height: 1.7; }
+  #pause-dialog, #settings-dialog { --dialog-top: 24px; position: fixed; inset: auto 0 0; margin: 0; width: 100%; max-width: none; max-height: min(92dvh, var(--visual-height, 100dvh)); padding: 24px 20px max(24px, env(safe-area-inset-bottom)); border: 1px solid #655078; border-bottom: 0; border-radius: 24px 24px 0 0; overscroll-behavior: contain; }
+  #pause-dialog h2 { font-size: 32px; margin: 17px 0 10px; }
+  #pause-dialog p { font-size: 14px; }
+  #pause-dialog .button, dialog .button { min-height: 54px; font-size: 15px; border-radius: 11px; }
+  .settings-hint { font-size: 14px; }
+  .settings-heading { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
+  .settings-heading h2 { font-size: 29px; }
+  .setting-row { min-height: 80px; }
+  .setting-row input { width: 28px; height: 28px; }
+  .settings-volume input { height: 48px; }
+  .settings-note { font-size: 12px; }
+  #settings-done { position: sticky; bottom: 0; z-index: 3; }
+  #delete-dialog { width: calc(100% - 28px); padding: 24px; }
+  #delete-dialog p { font-size: 14px; overflow-wrap: anywhere; }
+}
+@media (max-width: 370px) {
+  .brand > span:last-child { display: none; }
+  .header-actions { gap: 8px; }
+  .library-button { padding: 0 14px; }
+  #sound-status { max-width: 142px; }
+  .intro { padding: 12px 0 13px; }
+  .intro h1 { font-size: 24px; }
+  .start-caption { font-size: 9px; }
+  .joystick { width: 120px; height: 120px; }
+}
+@media (max-width: 960px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape) {
+  .landscape-settings-button { display: grid; }
+  .header { flex-basis: calc(56px + env(safe-area-inset-top)); }
+  body:not(.in-game) .intro, .below-game { display: none; }
+  .start-area { width: 260px; left: auto; right: max(20px, env(safe-area-inset-right)); bottom: 20px; }
+  .menu-overlay { background: linear-gradient(270deg, #181521f5, #181521c4 28%, transparent 65%); }
+  .hud { height: 64px; }
+  .sound-prompt { top: calc(10px + env(safe-area-inset-top)); max-width: calc(100% - 320px); }
+  #sound-status { max-width: 145px; }
+  .joystick { width: 112px; height: 112px; }
+  .joystick-arrows { font-size: 13px; line-height: 29px; }
+  .touch-controls { bottom: max(14px, env(safe-area-inset-bottom)); }
+  .feedback-card { max-width: 550px; }
+  .feedback-card h2 { font-size: 27px; margin: 10px 0; }
+  .feedback-card p { font-size: 13px; }
+  .feedback-card .button { max-width: 320px; }
+  .character-art { height: 160px; flex-basis: 160px; }
+  #pause-dialog h2 { font-size: 24px; margin: 12px 0; }
+  #pause-dialog > p { display: none; }
+}
+@media (max-width: 760px) and (orientation: landscape) {
+  .sound-prompt { max-width: none; }
+  #sound-status { display: none; }
+}

@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { MEMES, PORTAL_X } from './data.js';
 import { move, portalAt } from './game.js';
 import { createCharacter, disposeCharacter } from './characters.js';
+import { joystickStrength } from './joystick.js';
 
 export async function createWorld(canvas, onPortal, onWalk, characterId = 'azamat') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -79,7 +80,9 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     box(2.9, 4.05, .26, ink, 0, 2.25, 0, group);
     const image = new THREE.Mesh(new THREE.PlaneGeometry(2.42, 3.36), new THREE.MeshBasicMaterial({ map: textures.get(MEMES[index].id) }));
     image.position.set(0, 2.32, .15); image.userData.portal = index; group.add(image);
-    portalMeshes.push(image);
+    const touchTarget = new THREE.Mesh(new THREE.PlaneGeometry(2.96, 4.05), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    touchTarget.position.set(0, 2.25, .2); touchTarget.userData.portal = index; group.add(touchTarget);
+    portalMeshes.push(touchTarget);
     box(.085, 3.96, .1, frameMat, -1.44, 2.25, .17, group);
     box(.085, 3.96, .1, frameMat, 1.44, 2.25, .17, group);
     box(2.96, .085, .1, frameMat, 0, 4.23, .17, group);
@@ -113,8 +116,9 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
 
   let position = { x: 0, z: 4 }, active = false, target = null, last = performance.now(), elapsed = 0, phase = 0;
   let joystick = { x: 0, z: 0 };
+  let pendingTap = null;
   const keys = new Set();
-  const clearKeys = () => { keys.clear(); joystick = { x: 0, z: 0 }; target = null; destination.visible = false; };
+  const clearKeys = () => { keys.clear(); joystick = { x: 0, z: 0 }; pendingTap = null; target = null; destination.visible = false; };
   const keyMap = { KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
   window.addEventListener('keydown', event => {
     if (!active || !keyMap[event.code] || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
@@ -130,14 +134,18 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     destination.position.set(target.x, .04, target.z); destination.visible = true; onWalk?.();
   }
   canvas.addEventListener('pointerdown', event => {
-    if (!active || event.button > 0) return;
+    if (!active || event.button > 0 || event.isPrimary === false) return;
+    pendingTap = { id: event.pointerId, x: event.clientX, y: event.clientY, time: performance.now() };
+  });
+  canvas.addEventListener('pointercancel', () => { pendingTap = null; });
+  canvas.addEventListener('pointerup', event => {
+    const tap = pendingTap; pendingTap = null;
+    if (!active || !tap || tap.id !== event.pointerId || performance.now() - tap.time > 600 || Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 12) return;
     const rect = canvas.getBoundingClientRect();
     mouse.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
     raycaster.setFromCamera(mouse, camera);
     const hit = raycaster.intersectObjects(portalMeshes)[0];
     if (hit) { walkTo(PORTAL_X[hit.object.userData.portal], -4.9); return; }
-    const point = new THREE.Vector3();
-    if (raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), point)) walkTo(point.x, point.z);
   });
   const observer = new ResizeObserver(() => {
     const { width, height } = canvas.getBoundingClientRect();
@@ -146,19 +154,21 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     if (camera.aspect < 1.2) { camera.position.set(0, 17.5, 22); camera.fov = 49; }
     else { camera.position.set(0, 11.5, 16.8); camera.fov = 43; }
     camera.lookAt(0, 1, -1.4); camera.updateProjectionMatrix();
+    if (!document.hidden) renderer.render(scene, camera);
   });
   observer.observe(canvas);
   function frame(now) {
     const dt = Math.min((now - last) / 1000, .05); last = now; elapsed += dt;
-    let direction = { x: 0, z: 0 };
+    let direction = { x: 0, z: 0 }, speed = 1;
     if (active) {
       for (const key of keys) { const value = keyMap[key]; if (value) { direction.x += value[0]; direction.z += value[1]; } }
       if (target && !direction.x && !direction.z) {
         direction = { x: target.x - position.x, z: target.z - position.z };
         if (Math.hypot(direction.x, direction.z) < .12) { target = null; direction = { x: 0, z: 0 }; destination.visible = false; }
       }
-      if (Math.hypot(joystick.x, joystick.z) > .15) direction = joystick;
-      position = move(position, direction, dt);
+      const strength = joystickStrength(joystick.x, joystick.z);
+      if (strength > 0) { direction = joystick; speed = strength; }
+      position = move(position, direction, dt, speed);
       const portal = portalAt(position.x, position.z);
       if (portal !== -1) { active = false; clearKeys(); onPortal(portal); }
     }
@@ -179,9 +189,12 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     rig.torso.rotation.z = walking ? Math.sin(phase) * .025 : 0;
     halo.material.opacity = .55 + Math.sin(elapsed * 3) * .13;
     dust.rotation.y = elapsed * .012;
-    renderer.render(scene, camera);
+    if (!document.hidden && !document.querySelector('dialog[open]') && now - lastRender >= (powerSaving ? 1000 / 30 : active ? 1000 / 60 : 1000 / 20)) {
+      renderer.render(scene, camera); lastRender = now;
+    }
     requestAnimationFrame(frame);
   }
+  let powerSaving = false, lastRender = 0;
   requestAnimationFrame(frame);
   return {
     get position() { return { ...position }; },
@@ -190,7 +203,12 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     reset() { position = { x: 0, z: 4.6 }; character.rotation.y = 0; clearKeys(); },
     walkToPortal(index) { if (index >= 0 && index < 3) walkTo(PORTAL_X[index], -4.9); },
     setDirection(code, down) { if (!active) return; if (down) { keys.add(code); target = null; destination.visible = false; } else keys.delete(code); },
-    setJoystick(x, z) { if (!active) return; joystick = { x, z }; if (Math.hypot(x, z) > .15) { target = null; destination.visible = false; } },
+    setJoystick(x, z) { if (!active) return; joystick = { x, z }; if (joystickStrength(x, z) > 0) { target = null; destination.visible = false; } },
+    setPowerSaving(value) {
+      if (powerSaving === value) return;
+      powerSaving = value; renderer.shadowMap.enabled = !value; dust.visible = !value;
+      renderer.setPixelRatio(Math.min(devicePixelRatio, value ? 1 : matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+    },
     setCharacter(id) {
       if (rig.id === id) return;
       character.remove(rig.root); disposeCharacter(rig.root);

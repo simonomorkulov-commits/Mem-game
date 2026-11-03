@@ -4,6 +4,7 @@ import { newGame, answer, nextRound } from './game.js';
 import { initLibrary, getCatalog } from './library.js';
 import { bindJoystick } from './joystick.js';
 import { initCharacterPicker, selectedCharacter } from './character-picker.js';
+import { readPreferences, savePreferences } from './preferences.js';
 
 const $ = id => document.getElementById(id);
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -13,11 +14,19 @@ try { best = Math.max(0, Number(localStorage.getItem(storageKey)) || 0); } catch
 $('best-score').textContent = best;
 let world, state = null, paused = false, starting = false, isNewRecord = false;
 let audioContext, master, compressor, source, soundTimer;
-let volume = .65, muted = false;
+let preferences = readPreferences();
+let volume = preferences.volume, muted = preferences.muted, joystickControls;
 let activeMemes = MEMES;
 const buffers = new Map();
 
 function announce(message) { $('announcer').textContent = message; }
+function haptic(pattern) { if (preferences.vibration) { try { navigator.vibrate?.(pattern); } catch {} } }
+function stopControls() { joystickControls?.reset(); }
+function pauseForDialog() {
+  stopControls();
+  if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); }
+}
+function resumeIfUncovered() { if (paused && !document.querySelector('dialog[open]')) resume(); }
 function stopAudio() {
   if (source) { try { source.stop(); } catch { /* Already ended. */ } source = null; }
   clearTimeout(soundTimer); $('wave').classList.remove('playing');
@@ -79,6 +88,7 @@ function updateHud() {
   $('progress').setAttribute('aria-label', `Комната ${state.round} из 9`);
 }
 async function beginRoom() {
+  stopControls();
   paused = false; world.setActive(false); stopAudio();
   $('feedback-overlay').hidden = true; $('play-overlay').hidden = true;
   $('loading-overlay').hidden = false; $('loading-status').textContent = 'Открываем следующую комнату…';
@@ -86,10 +96,6 @@ async function beginRoom() {
   catch { showError('Не удалось загрузить картинку или звук. Обнови страницу и попробуй снова.'); return; }
   world.reset(); world.setActive(true); $('loading-overlay').hidden = true;
   $('feedback-overlay').hidden = true; $('play-overlay').hidden = false;
-  document.querySelectorAll('[data-portal]').forEach((button, i) => {
-    button.classList.remove('selected');
-    button.setAttribute('aria-label', `Пройти в картинку ${i + 1}: ${state.challenge.options[i].name}`);
-  });
   updateHud(); playMeme();
   announce(`Комната ${state.round}. Слушай мем и зайди в подходящую картинку.`);
 }
@@ -110,15 +116,18 @@ async function start() {
 }
 function selectPortal(index) {
   if (!state || state.status !== 'playing' || paused || !world.active) return;
+  stopControls(); haptic(10);
   world.walkToPortal(index);
-  document.querySelectorAll('[data-portal]').forEach((button, i) => button.classList.toggle('selected', i === index));
+  announce(`Персонаж идёт к картинке ${index + 1}.`);
 }
 function enterPortal(index) {
   if (!state || state.status !== 'playing' || paused) return;
+  stopControls();
   state = answer(state, index); world.setActive(false); stopAudio();
   world.reveal(state.challenge.correctIndex, index); updateHud();
   $('play-overlay').hidden = true; $('feedback-overlay').hidden = false;
   const { correct, gained, meme } = state.result;
+  haptic(correct ? 25 : [20, 45, 20]);
   $('feedback-icon').className = 'feedback-icon' + (correct ? '' : ' wrong');
   $('feedback-icon').innerHTML = icon(correct ? 'check' : 'x');
   $('feedback-kicker').textContent = correct ? 'МЕМНАЯ ПАМЯТЬ НЕ ПОДВЕЛА' : 'БЫВАЕТ. ЭТО ЖЕ МЕМЫ.';
@@ -151,14 +160,16 @@ function next() {
 }
 function pause() {
   if (!state || state.status !== 'playing' || paused) return;
+  stopControls();
   paused = true; world.setActive(false); stopAudio(); $('pause-dialog').showModal();
   $('resume-button').focus();
 }
 function resume() {
-  if (!state || state.status !== 'playing') return;
+  if (!state || state.status !== 'playing' || document.querySelector('dialog[open]')) return;
   paused = false; world.setActive(true); playMeme(); $('scene').focus({ preventScroll: true });
 }
 function home() {
+  stopControls();
   state = null; paused = false; stopAudio(); world.setActive(false); world.reset();
   document.body.classList.remove('in-game'); $('pause-dialog').close();
   $('hud').hidden = true; $('play-overlay').hidden = true; $('feedback-overlay').hidden = true;
@@ -172,40 +183,71 @@ function showError(message) {
 $('start-button').addEventListener('click', start);
 $('next-button').addEventListener('click', next);
 $('replay-button').addEventListener('click', playMeme);
-$('touch-replay').addEventListener('click', playMeme);
+$('touch-replay').addEventListener('click', () => { haptic(10); playMeme(); });
 $('pause-button').addEventListener('click', pause);
 $('resume-button').addEventListener('click', () => $('pause-dialog').close());
-$('pause-dialog').addEventListener('close', () => { if (paused) resume(); });
+$('pause-dialog').addEventListener('close', resumeIfUncovered);
 $('home-button').addEventListener('click', home);
 $('retry-button').addEventListener('click', () => location.reload());
 document.querySelector('.brand').addEventListener('click', event => { event.preventDefault(); if (state?.status === 'playing') pause(); else if (state) home(); else window.scrollTo({ top: 0, behavior: 'smooth' }); });
 $('rules-button').addEventListener('click', () => {
-  if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); }
+  pauseForDialog();
   $('rules-dialog').showModal();
 });
-$('rules-dialog').addEventListener('close', () => { if (paused && !$('pause-dialog').open) resume(); });
+$('rules-dialog').addEventListener('close', resumeIfUncovered);
 function applyVolume() {
   if (master) master.gain.setTargetAtTime(muted ? 0 : volume, audioContext.currentTime, .03);
   $('mute-button').innerHTML = icon(muted || volume === 0 ? 'muted' : 'sound');
   $('mute-button').setAttribute('aria-label', muted ? 'Включить звук' : 'Выключить звук');
   $('mute-button').setAttribute('aria-pressed', String(muted));
 }
-$('mute-button').addEventListener('click', () => { muted = !muted; applyVolume(); if (!muted) playMeme(); else if (state?.status === 'playing') $('sound-status').textContent = 'Звук выключен'; });
-$('volume').addEventListener('input', event => {
+$('mute-button').addEventListener('click', () => { muted = !muted; preferences.muted = muted; savePreferences(preferences); applyVolume(); if (!muted) playMeme(); else if (state?.status === 'playing') $('sound-status').textContent = 'Звук выключен'; });
+document.querySelectorAll('[data-volume]').forEach(input => input.addEventListener('input', event => {
   volume = Number(event.target.value) / 100; $('volume-value').textContent = `${event.target.value}%`;
-  muted = false; applyVolume();
-});
-document.querySelectorAll('[data-portal]').forEach(button => button.addEventListener('click', () => selectPortal(Number(button.dataset.portal))));
-bindJoystick($('joystick'), $('joystick-thumb'), (x, z) => world?.setJoystick(x, z));
+  muted = false; preferences.volume = volume; preferences.muted = false;
+  savePreferences(preferences); syncSettings(); applyVolume();
+}));
+joystickControls = bindJoystick($('joystick'), $('joystick-thumb'), (x, z) => world?.setJoystick(x, z));
 initLibrary({
-  onOpen() { if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); } },
-  onClose() { if (paused && !$('pause-dialog').open) resume(); }
+  onOpen: pauseForDialog,
+  onClose: resumeIfUncovered
 });
 const characterPicker = initCharacterPicker({
-  onOpen() { if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); } },
-  onClose() { if (paused && !$('pause-dialog').open) resume(); },
+  onOpen: pauseForDialog,
+  onClose: resumeIfUncovered,
   onSelect(id) { world?.setCharacter(id); }
 });
+function syncSettings() {
+  document.body.classList.toggle('controls-right', preferences.rightJoystick);
+  document.body.classList.toggle('power-saving', preferences.powerSaving);
+  $('right-joystick').checked = preferences.rightJoystick;
+  $('power-saving').checked = preferences.powerSaving; $('vibration').checked = preferences.vibration;
+  document.querySelectorAll('[data-volume]').forEach(input => { input.value = Math.round(volume * 100); });
+  $('volume-value').textContent = $('settings-volume-value').textContent = Math.round(volume * 100) + '%';
+  world?.setPowerSaving(preferences.powerSaving);
+}
+function updatePreferences(patch) { stopControls(); preferences = { ...preferences, ...patch }; savePreferences(preferences); syncSettings(); }
+for (const id of ['home-settings', 'pause-settings', 'header-settings']) $(id).addEventListener('click', () => {
+  pauseForDialog(); syncSettings(); $('settings-dialog').showModal();
+});
+for (const id of ['settings-close', 'settings-done']) $(id).addEventListener('click', () => $('settings-dialog').close());
+$('settings-dialog').addEventListener('close', resumeIfUncovered);
+for (const [id, name] of [['right-joystick', 'rightJoystick'], ['power-saving', 'powerSaving'], ['vibration', 'vibration']]) {
+  $(id).addEventListener('change', event => updatePreferences({ [name]: event.target.checked }));
+}
+for (const id of ['home-help', 'pause-help']) $(id).addEventListener('click', () => $('rules-button').click());
+$('vibration-setting').hidden = typeof navigator.vibrate !== 'function';
+$('fullscreen-button').hidden = !document.fullscreenEnabled || !document.documentElement.requestFullscreen;
+$('fullscreen-button').addEventListener('click', async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+  catch { /* Viewport layout remains usable if the browser declines fullscreen. */ }
+});
+document.addEventListener('fullscreenchange', () => { $('fullscreen-button').textContent = document.fullscreenElement ? 'Выйти из полного экрана' : 'Открыть на весь экран'; });
+syncSettings(); applyVolume();
+function syncVisualViewport() { document.documentElement.style.setProperty('--visual-height', Math.round(window.visualViewport?.height || innerHeight) + 'px'); }
+syncVisualViewport();
+window.visualViewport?.addEventListener('resize', syncVisualViewport);
+window.addEventListener('resize', syncVisualViewport);
 window.addEventListener('keydown', event => {
   if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
   if (event.code === 'Escape' && state?.status === 'playing') { event.preventDefault(); pause(); }
@@ -216,9 +258,11 @@ window.addEventListener('keydown', event => {
 document.addEventListener('visibilitychange', () => { if (document.hidden && !document.querySelector('dialog[open]')) pause(); });
 
 try {
-  world = await createWorld($('scene'), enterPortal, () => { document.querySelectorAll('[data-portal]').forEach(b => b.classList.remove('selected')); }, selectedCharacter());
+  world = await createWorld($('scene'), enterPortal, stopControls, selectedCharacter());
+  world.setPowerSaving(preferences.powerSaving);
   $('loading-overlay').hidden = true;
-  characterPicker.preparePreviews();
+  const prepare = () => { if (!state) characterPicker.preparePreviews(); };
+  if (window.requestIdleCallback) requestIdleCallback(prepare, { timeout: 1800 }); else setTimeout(prepare, 500);
 } catch (error) {
   console.error('Room initialization failed:', error);
   showError('Для 3D-комнаты нужен WebGL. Включи аппаратное ускорение или открой игру в современном Chrome, Edge, Firefox или Safari.');

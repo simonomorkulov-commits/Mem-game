@@ -4,11 +4,16 @@ export function joystickVector(dx, dy, radius = 42) {
   return { x: dx * scale / radius, z: dy * scale / radius, px: dx * scale, py: dy * scale };
 }
 
+export function joystickStrength(x, z) {
+  return Math.max(0, Math.min(1, (Math.hypot(x, z) - .14) / .86));
+}
+
 export function bindJoystick(base, thumb, onMove) {
   let pointer = null;
   function update(event) {
     const rect = base.getBoundingClientRect();
-    const vector = joystickVector(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2);
+    const radius = Math.max(12, (Math.min(rect.width, rect.height) - thumb.offsetWidth) / 2);
+    const vector = joystickVector(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2, radius);
     thumb.style.transform = `translate(${vector.px}px, ${vector.py}px)`;
     onMove(vector.x, vector.z);
   }
@@ -23,4 +28,6 @@ export function bindJoystick(base, thumb, onMove) {
   window.addEventListener('blur', reset);
   document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
   document.addEventListener('touchcancel', reset);
+  window.addEventListener('resize', reset);
+  return { reset };
 }

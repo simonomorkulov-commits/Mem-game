@@ -44,10 +44,10 @@ export function portalAt(x, z) {
   return PORTAL_X.findIndex(px => Math.abs(px - x) < 1.16);
 }
 
-export function move(position, direction, seconds) {
+export function move(position, direction, seconds, speed = 1) {
   const length = Math.hypot(direction.x, direction.z);
   if (!length || seconds <= 0) return { ...position };
-  const distance = 4.7 * Math.min(seconds, 0.05);
+  const distance = 4.7 * Math.min(seconds, 0.05) * Math.max(0, Math.min(1, speed));
   return { x: Math.max(-6.25, Math.min(6.25, position.x + direction.x / length * distance)),
     z: Math.max(-5.2, Math.min(6, position.z + direction.z / length * distance)) };
 }

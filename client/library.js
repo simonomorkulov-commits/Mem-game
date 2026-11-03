@@ -1,4 +1,5 @@
 const $ = id => document.getElementById(id);
+const isPhone = () => navigator.maxTouchPoints > 0 || matchMedia('(max-width: 960px), (pointer: coarse)').matches;
 export async function getCatalog() {
   const response = await fetch('/api/memes', { cache: 'no-store' });
   const data = await response.json();
@@ -15,6 +16,11 @@ function message(text, error = false) {
 }
 export function initLibrary({ onOpen, onClose }) {
   let catalog, imageBlob, audioFile, duration, previewImageUrl, previewAudioUrl, busy = false, deleting, playing;
+  let preparing = 0;
+  function syncUploadButton() {
+    $('upload-button').disabled = busy || preparing > 0;
+    $('upload-button').textContent = busy ? 'Сохраняем в коллекцию…' : preparing > 0 ? 'Готовим файлы…' : 'Добавить в игру +';
+  }
   const dialog = $('library-dialog');
   function stopPreview() { playing?.pause(); playing = null; $('audio-preview').pause(); }
   function render() {
@@ -69,7 +75,7 @@ export function initLibrary({ onOpen, onClose }) {
   function previewVisibility() { $('upload-preview').hidden = !imageBlob && !audioFile; }
   $('meme-image').addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;
-    imageBlob = null; $('upload-button').disabled = true;
+    imageBlob = null; preparing++; syncUploadButton();
     try {
       if (file.size > 20 * 1024 * 1024) throw Error('Эта картинка больше 20 МБ. Выбери файл поменьше.');
       const url = URL.createObjectURL(file); const image = new Image();
@@ -81,13 +87,13 @@ export function initLibrary({ onOpen, onClose }) {
       if (!imageBlob || imageBlob.size > 4 * 1024 * 1024) throw Error('Не удалось подготовить картинку. Выбери JPG или PNG.');
       if (previewImageUrl) URL.revokeObjectURL(previewImageUrl);
       previewImageUrl = URL.createObjectURL(imageBlob); $('image-preview').src = previewImageUrl; $('image-preview').hidden = false;
-      $('image-label').textContent = file.name; message('Картинка готова. Добавь её звук.');
-    } catch (error) { event.target.value = ''; $('image-preview').hidden = true; message(error.message || 'Не удалось прочитать картинку.', true); }
-    finally { $('upload-button').disabled = false; previewVisibility(); }
+      $('image-label').textContent = file.name; message(audioFile ? 'Картинка и звук готовы. Можно добавлять в игру.' : 'Картинка готова. Добавь её звук.');
+    } catch (error) { event.target.value = ''; $('image-preview').hidden = true; message(error instanceof DOMException ? 'Не удалось прочитать картинку. Выбери JPG или PNG.' : error.message || 'Не удалось прочитать картинку.', true); }
+    finally { preparing--; syncUploadButton(); previewVisibility(); }
   });
   $('meme-audio').addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;
-    audioFile = null; $('upload-button').disabled = true;
+    audioFile = null; preparing++; syncUploadButton();
     let context;
     try {
       if (file.size > 8 * 1024 * 1024) throw Error('Звук должен быть меньше 8 МБ.');
@@ -96,14 +102,15 @@ export function initLibrary({ onOpen, onClose }) {
       if (!duration || duration > 20) throw Error('Выбери короткий фрагмент длиной до 20 секунд.');
       audioFile = file; if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
       previewAudioUrl = URL.createObjectURL(file); $('audio-preview').src = previewAudioUrl; $('audio-preview').hidden = false;
-      $('audio-label').textContent = `${file.name} · ${duration.toFixed(1)} сек.`; message('Звук готов. Проверь и добавляй в игру.');
-    } catch (error) { event.target.value = ''; $('audio-preview').hidden = true; message(error.message || 'Этот звук не читается. Попробуй MP3.', true); }
-    finally { await context?.close(); $('upload-button').disabled = false; previewVisibility(); }
+      $('audio-label').textContent = `${file.name} · ${duration.toFixed(1)} сек.`; message(imageBlob ? 'Картинка и звук готовы. Можно добавлять в игру.' : 'Звук готов. Теперь выбери картинку.');
+    } catch (error) { event.target.value = ''; $('audio-preview').hidden = true; message(error instanceof DOMException ? 'Этот звук не читается. Попробуй MP3 или M4A.' : error.message || 'Этот звук не читается. Попробуй MP3.', true); }
+    finally { await context?.close(); preparing--; syncUploadButton(); previewVisibility(); }
   });
   $('upload-form').addEventListener('submit', async event => {
-    event.preventDefault(); if (busy) return;
+    event.preventDefault(); if (busy || preparing > 0) return;
     if (!imageBlob || !audioFile) { message('Сначала выбери и картинку, и звук.', true); return; }
-    busy = true; $('upload-button').disabled = true; $('upload-button').textContent = 'Сохраняем в коллекцию…'; stopPreview();
+    if (isPhone()) document.activeElement?.blur();
+    busy = true; syncUploadButton(); stopPreview();
     try {
       const form = new FormData(); form.set('name', $('meme-name').value.trim()); form.set('image', imageBlob, 'image.webp');
       form.set('audio', audioFile, audioFile.name); form.set('duration', String(duration));
@@ -113,9 +120,10 @@ export function initLibrary({ onOpen, onClose }) {
       $('image-label').textContent = 'Выбрать картинку'; $('audio-label').textContent = 'Выбрать звук'; previewVisibility();
       if (previewImageUrl) URL.revokeObjectURL(previewImageUrl); if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
       await refresh(); message('Мем добавлен! Он уже доступен на всех устройствах и появится в новых партиях.');
-      $('meme-name').focus({ preventScroll: true });
+      if (!isPhone()) $('meme-name').focus({ preventScroll: true });
+      else $('library-status').scrollIntoView({ block: 'nearest' });
     } catch (error) { message(error.message, true); }
-    finally { busy = false; $('upload-button').disabled = false; $('upload-button').textContent = 'Добавить в игру +'; }
+    finally { busy = false; syncUploadButton(); }
   });
   if (new URLSearchParams(location.search).has('collection')) { history.replaceState(null, '', location.pathname); open(); }
 }
