@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111116">
-  <meta name="description" content="Услышь звук мема и проведи персонажа в правильную картинку. Девять комнат, три портала и только твоя мемная память.">
+  <meta name="description" content="Услышь звук мема и проведи персонажа в правильную картинку. 30 комнат, живые дуэли с друзьями и твоя мемная память.">
   <title>Игра мемов — узнай звук, выбери портал</title>
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <link rel="stylesheet" href="./style.css">
@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./characters.css">
   <link rel="stylesheet" href="./phone.css">
   <link rel="stylesheet" href="./community.css">
+  <link rel="stylesheet" href="./duels.css">
 </head>
 <body>
   <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -54,9 +55,11 @@
           <div class="hud-progress" id="progress" aria-label="Прогресс"></div>
           <div class="hud-right"><div class="lives" id="lives" aria-label="Три жизни"></div><span class="score"><svg><use href="#i-bolt"/></svg><b id="score">0</b></span><button id="pause-button" class="icon-button" aria-label="Пауза"><svg><use href="#i-pause"/></svg></button></div>
         </div>
+        <div id="duel-hud" class="duel-hud" hidden><div class="duel-hud-player"><span id="duel-you-name">Ты</span><b id="duel-you-score">0</b></div><div class="duel-hud-middle"><b id="duel-round">1 / 5</b><span id="duel-clock">Подготовка</span></div><div class="duel-hud-player opponent"><span id="duel-opponent-name">Соперник</span><b id="duel-opponent-score">0</b></div><button id="duel-exit" class="icon-button" aria-label="Выйти из дуэли">×</button></div>
+        <div id="duel-stage" class="duel-stage" hidden><div class="duel-stage-card"><span class="eyebrow" id="duel-stage-kicker">ЖИВАЯ ДУЭЛЬ</span><h2 id="duel-stage-title">Ждём соперника</h2><p id="duel-stage-text"></p><div id="duel-stage-count"></div><div id="duel-result-actions" hidden><button id="duel-rematch" class="button primary">Реванш</button><button id="duel-finish-home" class="button secondary">В главное меню</button><p class="community-note" id="duel-record-note"></p></div></div></div>
         <div class="menu-overlay" id="menu-overlay">
           <div class="scene-title"><span class="tiny-tag">ВКЛЮЧИ ЗВУК</span><h2>Твой слух.<br>Твой <em>мемный</em><br>выход.</h2><p>Проведи персонажа в картинку,<br>которая подходит к звуку.</p></div>
-          <div class="start-area"><button id="character-button" class="character-button"><img id="selected-character-portrait" alt=""><span><small>ТВОЙ ГЕРОЙ</small><b id="selected-character-name">Азамат</b></span><span class="change-character">Сменить ›</span></button><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><span class="start-caption"><span id="level-total">30</span> уровней <i>·</i> 3 жизни <i>·</i> общий рейтинг</span></div>
+          <div class="start-area"><button id="character-button" class="character-button"><img id="selected-character-portrait" alt=""><span><small>ТВОЙ ГЕРОЙ</small><b id="selected-character-name">Азамат</b></span><span class="change-character">Сменить ›</span></button><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><button class="button secondary duel-entry" id="duel-button">⚔ Дуэль с другом</button><span class="start-caption"><span id="level-total">30</span> уровней <i>·</i> 3 жизни <i>·</i> общий рейтинг</span></div>
           <div class="floating-note">наушники —<br>хорошая идея <span>♪</span></div>
         </div>
         <div class="play-overlay" id="play-overlay" hidden>
@@ -77,6 +80,15 @@
     </main>
     <footer><span>игра мемов <span class="footer-dot">✳</span> только хорошие вайбы</span><span>Сделано для тех, кто слишком долго сидит в интернете.</span></footer>
   </div>
+  <dialog id="duel-dialog" class="community-dialog duel-dialog">
+    <div class="community-heading"><div><span class="eyebrow">ТВОЙ ДРУГ. ТВОЙ СОПЕРНИК.</span><h2>Живая дуэль</h2></div><button id="duel-close" class="icon-button" aria-label="Закрыть">×</button></div>
+    <p id="duel-status" class="community-status" role="status">Создай комнату или введи код друга.</p>
+    <div id="duel-auth" hidden><p>Для дуэли нужен аккаунт и ник. Обычная игра доступна без входа.</p><a id="duel-signin" class="button primary" target="_top" href="/signin-with-chatgpt?return_to=%2F">Войти через ChatGPT</a><button id="duel-profile" class="button primary" hidden>Выбрать ник</button></div>
+    <div id="duel-controls" hidden><form id="duel-create-form"><label class="field-label" for="duel-pack">Подборка комнат<select id="duel-pack"></select></label><button id="duel-create" class="button primary">Создать дуэль</button></form><div class="duel-or">или присоединись к другу</div><form id="duel-join-form" class="duel-join-form"><label class="field-label" for="duel-code-input">Код комнаты<input id="duel-code-input" maxlength="6" minlength="6" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC234"></label><button id="duel-join" class="button secondary">Войти</button></form></div>
+    <div id="duel-lobby" hidden><div class="duel-invite"><span>КОД КОМНАТЫ</span><b id="duel-room-code"></b><div><button id="duel-copy-code" class="text-button">Скопировать код</button><button id="duel-share" class="text-button">Пригласить по ссылке</button></div></div><div class="duel-lobby-players"><div><span id="duel-host-name"></span><b id="duel-host-ready"></b></div><span class="duel-vs">VS</span><div><span id="duel-guest-name"></span><b id="duel-guest-ready"></b></div></div><p class="community-note">Одинаковые комнаты и картинки. Верно — 100 очков. Ошибка — 0. На ответ 45 секунд, все проходят до конца. Скорость ходьбы не влияет на очки.</p><button id="duel-ready" class="button primary">Готов играть</button><button id="duel-lobby-leave" class="text-button">Выйти из комнаты</button></div>
+    <div class="duel-ranking-section"><h3>Рейтинг дуэлей</h3><p class="community-note" id="duel-ranking-status"></p><ol id="duel-ranking" class="ranking-list"></ol><button id="duel-ranking-refresh" class="text-button">Обновить рейтинг</button></div>
+  </dialog>
+  <dialog id="duel-leave-dialog"><span class="eyebrow">ЖИВАЯ ДУЭЛЬ</span><h2>Выйти из дуэли?</h2><p>Матч продолжается, пока открыто это окно. Выход во время игры засчитывается как поражение.</p><button id="duel-leave-cancel" class="button primary">Остаться в игре</button><button id="duel-leave-confirm" class="button secondary">Выйти из дуэли</button></dialog>
   <dialog id="rules-dialog"><form method="dialog"><button class="dialog-close icon-button" aria-label="Закрыть"><svg><use href="#i-x"/></svg></button></form><span class="eyebrow">ТВОЙ ПУТЬ В МЕМЫ</span><h2>Всё просто.<br>Доверься ушам.</h2><ol><li><b>Слушай звук.</b> Его можно повторить кнопкой «Ещё раз» или пробелом.</li><li><b>Найди подходящую картинку.</b> На телефоне используй джойстик или нажми на картинку. На компьютере — WASD, стрелки или клавиши 1, 2, 3.</li><li><b>Зайди в портал.</b> Верный ответ даёт 100 очков. Серия ответов добавляет до 100 бонусных очков за комнату.</li></ol><p class="dialog-note">Пройди 30 комнат. У тебя 3 жизни. Таймера нет — можно подумать. Esc ставит игру на паузу.</p><form method="dialog"><button class="button primary">Понятно, я в деле <svg><use href="#i-check"/></svg></button></form></dialog>
   <dialog id="pause-dialog"><span class="eyebrow">МЕМЫ ПОДОЖДУТ</span><h2>Пауза.</h2><p>Комната никуда не денется.</p><button class="button primary" id="resume-button"><svg><use href="#i-play"/></svg>Продолжить</button><button class="button secondary" id="pause-character-button">Выбрать персонажа</button><button class="button secondary" id="pause-settings">Настройки управления</button><button class="button secondary" id="pause-help">Как играть</button><button class="button secondary" id="home-button">В главное меню</button></dialog>
   <dialog id="settings-dialog" class="settings-dialog">

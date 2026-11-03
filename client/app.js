@@ -5,6 +5,7 @@ import { initCharacterPicker, selectedCharacter } from './character-picker.js';
 import { readPreferences, savePreferences } from './preferences.js';
 import { initAccountUI, startRun, answerRun, currentRun, finishRun } from './account.js';
 import { initLevelEditor } from './level-editor.js';
+import { initDuels } from './duels.js';
 
 const $ = id => document.getElementById(id);
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -16,7 +17,7 @@ let world, state = null, paused = false, starting = false, isNewRecord = false;
 let audioContext, master, compressor, source, soundTimer;
 let preferences = readPreferences();
 let volume = preferences.volume, muted = preferences.muted, joystickControls;
-let accountUI, levelEditor;
+let accountUI, levelEditor, duelUI;
 const buffers = new Map();
 
 function announce(message) { $('announcer').textContent = message; }
@@ -24,9 +25,10 @@ function haptic(pattern) { if (preferences.vibration) { try { navigator.vibrate?
 function stopControls() { joystickControls?.reset(); }
 function pauseForDialog() {
   stopControls();
+  if (duelUI?.active) { duelUI.suspend(); return; }
   if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); }
 }
-function resumeIfUncovered() { if (paused && !document.querySelector('dialog[open]')) resume(); }
+function resumeIfUncovered() { if (duelUI?.active) duelUI.refresh(); else if (paused && !document.querySelector('dialog[open]')) resume(); }
 function stopAudio() {
   if (source) { try { source.stop(); } catch { /* Already ended. */ } source = null; }
   clearTimeout(soundTimer); $('wave').classList.remove('playing');
@@ -56,10 +58,11 @@ async function loadAudio(memes) {
   }
 }
 function playMeme() {
-  if (!state || state.status !== 'playing' || paused || !audioContext) return;
+  const inDuel = duelUI?.active, challenge = inDuel ? duelUI.challenge : state?.challenge;
+  if (!audioContext || (inDuel ? !duelUI.canPlay : !state || state.status !== 'playing' || paused)) return;
   stopAudio();
   if (muted || volume === 0) { $('sound-status').textContent = 'Включи звук, чтобы услышать мем'; return; }
-  const buffer = buffers.get(state.challenge.target.id);
+  const buffer = buffers.get(challenge.target.id);
   if (!buffer) return;
   audioContext.resume().catch(() => { $('sound-status').textContent = 'Нажми «Ещё раз», чтобы включить звук'; });
   source = audioContext.createBufferSource(); source.buffer = buffer;
@@ -119,12 +122,13 @@ async function start() {
   finally { starting = false; $('start-button').disabled = false; }
 }
 function selectPortal(index) {
-  if (!state || state.status !== 'playing' || paused || !world.active) return;
+  if (duelUI?.active ? !duelUI.canPlay || !world.active : !state || state.status !== 'playing' || paused || !world.active) return;
   stopControls(); haptic(10);
   world.walkToPortal(index);
   announce(`Персонаж идёт к картинке ${index + 1}.`);
 }
 async function enterPortal(index) {
+  if (duelUI?.active) { await duelUI.answer(index); return; }
   if (!state || state.status !== 'playing' || paused) return;
   stopControls();
   world.setActive(false); stopAudio(); state.status = 'checking';
@@ -174,6 +178,7 @@ async function next() {
   finally { $('next-button').disabled = false; }
 }
 function pause() {
+  if (duelUI?.active) { duelUI.askLeave(); return; }
   if (!state || state.status !== 'playing' || paused) return;
   stopControls();
   paused = true; world.setActive(false); stopAudio(); $('pause-dialog').showModal();
@@ -280,17 +285,50 @@ window.visualViewport?.addEventListener('resize', syncVisualViewport);
 window.addEventListener('resize', syncVisualViewport);
 window.addEventListener('keydown', event => {
   if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if (duelUI?.active) {
+    if (event.code === 'Escape') { event.preventDefault(); duelUI.askLeave(); }
+    if (event.repeat) return;
+    if (event.code === 'Space') { event.preventDefault(); playMeme(); }
+    if (['Digit1', 'Digit2', 'Digit3'].includes(event.code)) { event.preventDefault(); selectPortal(Number(event.code.slice(-1)) - 1); }
+    return;
+  }
   if (event.code === 'Escape' && state?.status === 'playing') { event.preventDefault(); pause(); }
   if (event.repeat || paused || state?.status !== 'playing') return;
   if (event.code === 'Space') { event.preventDefault(); playMeme(); }
   if (['Digit1', 'Digit2', 'Digit3'].includes(event.code)) { event.preventDefault(); selectPortal(Number(event.code.slice(-1)) - 1); }
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && !document.querySelector('dialog[open]')) pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !document.querySelector('dialog[open]')) { if (duelUI?.active) duelUI.suspend(); else pause(); } });
 
 try {
   world = await createWorld($('scene'), enterPortal, stopControls, selectedCharacter());
   world.setPowerSaving(preferences.powerSaving);
   $('loading-overlay').hidden = true;
+  duelUI = initDuels({
+    account: accountUI, canOpen: () => !state && !starting,
+    unlockAudio: ensureAudio,
+    enter() {
+      document.body.classList.add('in-game', 'duel-mode');
+      $('menu-overlay').hidden = $('room-label').hidden = $('hud').hidden = $('feedback-overlay').hidden = true;
+      $('loading-overlay').hidden = true; $('scene').focus({ preventScroll: true });
+    },
+    exit() {
+      document.body.classList.remove('in-game', 'duel-mode');
+      $('menu-overlay').hidden = $('room-label').hidden = false;
+      $('hud').hidden = $('feedback-overlay').hidden = $('play-overlay').hidden = $('loading-overlay').hidden = true;
+      $('start-button').focus({ preventScroll: true });
+    },
+    async prepare(challenge) {
+      stopControls(); world.setActive(false); stopAudio();
+      await Promise.all([world.setRound(challenge), loadAudio([challenge.target])]); world.reset();
+    },
+    activate(value) {
+      if (world.active !== value) { world.setActive(value); if (!value) { stopControls(); stopAudio(); } }
+      $('play-overlay').hidden = !value;
+    },
+    stop() { stopControls(); world.setActive(false); stopAudio(); $('play-overlay').hidden = true; },
+    play: playMeme,
+    reveal(result) { world.reveal(result.correctIndex, result.selected); haptic(result.correct ? 25 : [20, 45, 20]); playFeedback(result.correct); }
+  });
   const prepare = () => { if (!state) characterPicker.preparePreviews(); };
   if (window.requestIdleCallback) requestIdleCallback(prepare, { timeout: 1800 }); else setTimeout(prepare, 500);
 } catch (error) {

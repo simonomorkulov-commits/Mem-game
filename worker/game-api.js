@@ -1,4 +1,5 @@
 import { scoreAnswer, INITIAL_LIVES, DEFAULT_LEVEL_COUNT, ROOM_THEMES } from '../client/scoring.js';
+import { handleDuelApi } from './duel-api.js';
 
 const gameJSON = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 function gameFail(message, status = 400) { throw Object.assign(new Error(message), { status }); }
@@ -168,6 +169,10 @@ export async function handleGameApi(request, env, services) {
   const url = new URL(request.url), pathname = url.pathname, method = request.method;
   if (method !== 'GET' && request.headers.get('origin') && request.headers.get('origin') !== url.origin) gameFail('Открой игру на её сайте.', 403);
   const user = await gameUser(request);
+  if (pathname === '/api/duels' || pathname.startsWith('/api/duels/')) {
+    return handleDuelApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody,
+      levels: () => gameLevels(env, services), shuffle: gameShuffle });
+  }
   if (pathname === '/api/me' && method === 'GET') {
     const profile = await gameProfile(env.DB, user);
     return gameJSON({ signedIn: !!user, profile: gamePublicProfile(profile), canManage: services.canManage(request, env) });

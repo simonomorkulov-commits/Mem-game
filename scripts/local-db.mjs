@@ -5,9 +5,17 @@ import { fileURLToPath } from 'node:url';
 export class LocalDB {
   constructor(filename = ':memory:') {
     this.db = new DatabaseSync(filename);
-    this.db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
+    this.db.exec('PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL;');
     this.queue = Promise.resolve();
-    this.db.exec(readFileSync(new URL('../drizzle/0000_accounts_levels.sql', import.meta.url), 'utf8').replace(/CREATE TABLE /g, 'CREATE TABLE IF NOT EXISTS ').replace(/CREATE INDEX /g, 'CREATE INDEX IF NOT EXISTS '));
+    this.db.exec('CREATE TABLE IF NOT EXISTS __local_migrations (tag TEXT PRIMARY KEY NOT NULL)');
+    const journal = JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json', import.meta.url), 'utf8'));
+    for (const entry of journal.entries) {
+      const sql = readFileSync(new URL('../drizzle/' + entry.tag + '.sql', import.meta.url), 'utf8')
+        .replace(/CREATE TABLE /g, 'CREATE TABLE IF NOT EXISTS ').replace(/CREATE INDEX /g, 'CREATE INDEX IF NOT EXISTS ');
+      this.db.exec('BEGIN IMMEDIATE');
+      try { if (!this.db.prepare('SELECT tag FROM __local_migrations WHERE tag = ?').get(entry.tag)) { this.db.exec(sql); this.db.prepare('INSERT INTO __local_migrations (tag) VALUES (?)').run(entry.tag); } this.db.exec('COMMIT'); }
+      catch (error) { this.db.exec('ROLLBACK'); throw error; }
+    }
   }
   prepare(sql) {
     const statement = this.db.prepare(sql);
