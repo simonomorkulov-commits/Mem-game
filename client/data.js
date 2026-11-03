@@ -6,5 +6,5 @@ export const MEMES = [
   { id: 'anime-wow', name: 'Anime Wow', image: './assets/anime-wow.svg', audio: './assets/anime-wow.mp3', color: '#ffb5ed' },
   { id: 'spongebob', name: 'Грустный Спанч Боб', image: './assets/spongebob.jpg', audio: './assets/spongebob.mp3', color: '#ffda76' }
 ];
-export const TOTAL_ROUNDS = 9;
+export const TOTAL_ROUNDS = 30;
 export const PORTAL_X = [-4, 0, 4];

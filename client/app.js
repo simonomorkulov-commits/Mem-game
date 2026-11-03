@@ -1,10 +1,10 @@
 import { createWorld } from './scene.js';
-import { MEMES } from './data.js';
-import { newGame, answer, nextRound } from './game.js';
-import { initLibrary, getCatalog } from './library.js';
+import { initLibrary } from './library.js';
 import { bindJoystick } from './joystick.js';
 import { initCharacterPicker, selectedCharacter } from './character-picker.js';
 import { readPreferences, savePreferences } from './preferences.js';
+import { initAccountUI, startRun, answerRun, currentRun, finishRun } from './account.js';
+import { initLevelEditor } from './level-editor.js';
 
 const $ = id => document.getElementById(id);
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -16,7 +16,7 @@ let world, state = null, paused = false, starting = false, isNewRecord = false;
 let audioContext, master, compressor, source, soundTimer;
 let preferences = readPreferences();
 let volume = preferences.volume, muted = preferences.muted, joystickControls;
-let activeMemes = MEMES;
+let accountUI, levelEditor;
 const buffers = new Map();
 
 function announce(message) { $('announcer').textContent = message; }
@@ -81,13 +81,16 @@ function playFeedback(correct) {
 }
 function updateHud() {
   $('round-number').textContent = String(state.round).padStart(2, '0');
+  $('round-total').textContent = state.total;
   $('score').textContent = state.score;
   $('lives').innerHTML = [0, 1, 2].map(i => `<span class="${i >= state.lives ? 'lost' : ''}">${icon('heart')}</span>`).join('');
   $('lives').setAttribute('aria-label', `Осталось жизней: ${state.lives}`);
-  $('progress').innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${i < state.round - 1 ? 'passed' : i === state.round - 1 ? 'current' : ''}"></i>`).join('');
-  $('progress').setAttribute('aria-label', `Комната ${state.round} из 9`);
+  const dots = Math.min(state.total, 10), current = Math.floor((state.round - 1) * dots / state.total);
+  $('progress').innerHTML = Array.from({ length: dots }, (_, i) => `<i class="${i < current ? 'passed' : i === current ? 'current' : ''}"></i>`).join('');
+  $('progress').setAttribute('aria-label', `Комната ${state.round} из ${state.total}`);
 }
 async function beginRoom() {
+  $('finish-actions').hidden = true;
   stopControls();
   paused = false; world.setActive(false); stopAudio();
   $('feedback-overlay').hidden = true; $('play-overlay').hidden = true;
@@ -105,8 +108,9 @@ async function start() {
   $('loading-overlay').hidden = false; $('loading-status').textContent = 'Включаем мемные звуки…';
   try {
     await ensureAudio();
-    activeMemes = (await getCatalog()).memes;
-    state = newGame(Math.random, activeMemes); isNewRecord = false; document.body.classList.add('in-game');
+    const me = await accountUI.refresh();
+    if (me.signedIn && !me.profile) { $('loading-overlay').hidden = true; await accountUI.openProfile(); return; }
+    state = await startRun(); isNewRecord = false; document.body.classList.add('in-game');
     $('menu-overlay').hidden = true; $('room-label').hidden = true; $('hud').hidden = false;
     $('loading-overlay').hidden = true;
     await beginRoom(); $('scene').focus({ preventScroll: true });
@@ -120,11 +124,15 @@ function selectPortal(index) {
   world.walkToPortal(index);
   announce(`Персонаж идёт к картинке ${index + 1}.`);
 }
-function enterPortal(index) {
+async function enterPortal(index) {
   if (!state || state.status !== 'playing' || paused) return;
   stopControls();
-  state = answer(state, index); world.setActive(false); stopAudio();
-  world.reveal(state.challenge.correctIndex, index); updateHud();
+  world.setActive(false); stopAudio(); state.status = 'checking';
+  $('loading-overlay').hidden = false; $('loading-status').textContent = 'Проверяем ответ…';
+  try { state = await answerRun(state, index); }
+  catch (error) { showError(error.message); return; }
+  $('loading-overlay').hidden = true;
+  world.reveal(state.result.correctIndex, index); updateHud();
   $('play-overlay').hidden = true; $('feedback-overlay').hidden = false;
   const { correct, gained, meme } = state.result;
   haptic(correct ? 25 : [20, 45, 20]);
@@ -132,9 +140,9 @@ function enterPortal(index) {
   $('feedback-icon').innerHTML = icon(correct ? 'check' : 'x');
   $('feedback-kicker').textContent = correct ? 'МЕМНАЯ ПАМЯТЬ НЕ ПОДВЕЛА' : 'БЫВАЕТ. ЭТО ЖЕ МЕМЫ.';
   $('feedback-title').textContent = correct ? (state.streak > 1 ? `Серия ×${state.streak}!` : 'Тот самый мем!') : 'Не тот портал';
-  $('feedback-text').textContent = correct ? `Это ${meme.name}. Продолжаем путешествие?` : `Звучал ${meme.name}. Правильная картинка — ${state.challenge.correctIndex + 1}.`;
+  $('feedback-text').textContent = correct ? `Это ${meme.name}. Продолжаем путешествие?` : `Звучал ${meme.name}. Правильная картинка — ${state.result.correctIndex + 1}.`;
   $('feedback-points').innerHTML = correct ? `+${gained}<small>${gained > 100 ? `100 за мем + ${gained - 100} за серию` : 'ОЧКОВ В ТВОЮ КОПИЛКУ'}</small>` : `<span style="color:var(--pink)">−1 жизнь</span><small>Осталось: ${state.lives}</small>`;
-  $('next-button').querySelector('span').textContent = state.lives <= 0 || state.round >= 9 ? 'Посмотреть результат' : 'Следующая комната';
+  $('next-button').querySelector('span').textContent = state.finished ? 'Посмотреть результат' : 'Следующая комната';
   playFeedback(correct); $('next-button').focus({ preventScroll: true });
   announce(`${correct ? 'Верно' : 'Ошибка'}. ${meme.name}. Очки: ${state.score}. Жизни: ${state.lives}.`);
 }
@@ -143,20 +151,27 @@ function showFinish() {
     best = state.score; isNewRecord = true; $('best-score').textContent = best;
     try { localStorage.setItem(storageKey, String(best)); } catch { /* Scores still work without storage. */ }
   }
-  const completed = state.lives > 0;
+  const completed = state.lives > 0 && state.round >= state.total;
   $('feedback-icon').className = 'feedback-icon'; $('feedback-icon').innerHTML = icon('cup');
   $('feedback-kicker').textContent = isNewRecord ? 'НОВЫЙ ЛИЧНЫЙ РЕКОРД' : 'ТВОЙ МЕМНЫЙ РЕЗУЛЬТАТ';
   $('feedback-title').textContent = completed ? 'Ты прошёл все комнаты!' : 'Мемы победили. Пока.';
   $('feedback-text').textContent = `Угадано ${state.correct} из ${state.round}. ${completed ? 'Мемная память в отличной форме.' : 'Ещё одна попытка — и всё получится.'}`;
   $('feedback-points').innerHTML = `${state.score}<small>ОЧКОВ · РЕКОРД ${best}</small>`;
   $('next-button').querySelector('span').textContent = 'Сыграть ещё раз';
+  $('finish-actions').hidden = false;
+  $('rating-result').textContent = state.ranked ? 'Результат сохранён в общем рейтинге.' : 'Войди и выбери ник, чтобы следующие результаты попали в рейтинг.';
+  $('finish-profile').hidden = state.ranked;
+  if (state.ranked) accountUI.refresh().catch(() => {});
   announce(`Игра закончена. ${state.score} очков. Угадано мемов: ${state.correct}.`);
 }
-function next() {
+async function next() {
   if (state?.status === 'finished') { start(); return; }
   if (state?.status !== 'result') return;
-  state = nextRound(state);
-  if (state.status === 'finished') showFinish(); else beginRoom();
+  if (state.finished) { state.status = 'finished'; showFinish(); return; }
+  $('next-button').disabled = true;
+  try { state = await currentRun(state); if (state.status === 'finished') showFinish(); else await beginRoom(); }
+  catch (error) { showError(error.message); }
+  finally { $('next-button').disabled = false; }
 }
 function pause() {
   if (!state || state.status !== 'playing' || paused) return;
@@ -168,8 +183,11 @@ function resume() {
   if (!state || state.status !== 'playing' || document.querySelector('dialog[open]')) return;
   paused = false; world.setActive(true); playMeme(); $('scene').focus({ preventScroll: true });
 }
-function home() {
+async function home() {
   stopControls();
+  if (state?.runId && !state.finished) {
+    try { await finishRun(state); } catch { /* A later sign-in can resume a run if the connection is lost. */ }
+  }
   state = null; paused = false; stopAudio(); world.setActive(false); world.reset();
   document.body.classList.remove('in-game'); $('pause-dialog').close();
   $('hud').hidden = true; $('play-overlay').hidden = true; $('feedback-overlay').hidden = true;
@@ -210,8 +228,20 @@ document.querySelectorAll('[data-volume]').forEach(input => input.addEventListen
 joystickControls = bindJoystick($('joystick'), $('joystick-thumb'), (x, z) => world?.setJoystick(x, z));
 initLibrary({
   onOpen: pauseForDialog,
-  onClose: resumeIfUncovered
+  onClose() { resumeIfUncovered(); accountUI?.refreshLevels().catch(() => {}); },
+  onMemeAdded(meme) { levelEditor?.noteNewMeme(meme); }
 });
+function updateLevelCount(data) {
+  $('level-total').textContent = data.total;
+  const note = $('rules-dialog').querySelector('.dialog-note');
+  note.textContent = `В прохождении ${data.total} уровней. У тебя 3 жизни. Таймера нет — можно подумать. Esc ставит игру на паузу.`;
+}
+accountUI = initAccountUI({
+  onOpen: pauseForDialog, onClose: resumeIfUncovered, onLevels: updateLevelCount,
+  onProfile(me) { if (me.profile) { best = me.profile.bestScore; $('best-score').textContent = best; } }
+});
+levelEditor = initLevelEditor({ onOpen: pauseForDialog, onClose: resumeIfUncovered, onChange: updateLevelCount });
+Promise.allSettled([accountUI.refresh(), accountUI.refreshLevels()]);
 const characterPicker = initCharacterPicker({
   onOpen: pauseForDialog,
   onClose: resumeIfUncovered,

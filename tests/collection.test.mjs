@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import worker from '../worker/index.js';
 import { newGame, answer, nextRound } from '../client/game.js';
 import { joystickVector } from '../client/joystick.js';
+import { TOTAL_ROUNDS } from '../client/data.js';
 
 class MemoryBucket {
   objects = new Map();
@@ -45,7 +46,7 @@ test('Owner uploads persist for other clients, media is served, and custom-only 
   const ownOnly = await (await call(env, '/api/memes', {}, null)).json();
   assert.equal(ownOnly.memes.length, 3); assert.equal(ownOnly.includeBuiltins, false);
   let state = newGame(Math.random, ownOnly.memes);
-  for (let i = 0; i < 9; i++) { assert.ok(ids.includes(state.challenge.target.id)); state = nextRound(answer(state, state.challenge.correctIndex)); }
+  for (let i = 0; i < TOTAL_ROUNDS; i++) { assert.ok(ids.includes(state.challenge.target.id)); state = nextRound(answer(state, state.challenge.correctIndex)); }
   assert.equal(state.status, 'finished');
   assert.equal((await call(env, `/api/memes/${ids[0]}`, { method: 'DELETE' })).status, 200);
   const after = await (await call(env, '/api/memes', {}, null)).json();

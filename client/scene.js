@@ -3,6 +3,7 @@ import { MEMES, PORTAL_X } from './data.js';
 import { move, portalAt } from './game.js';
 import { createCharacter, disposeCharacter } from './characters.js';
 import { joystickStrength } from './joystick.js';
+import { ROOM_THEMES } from './scoring.js';
 
 export async function createWorld(canvas, onPortal, onWalk, characterId = 'azamat') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -216,11 +217,12 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     },
     async setRound(round) {
       await loadTextures(round.options);
+      const theme = ROOM_THEMES[round.theme] || ROOM_THEMES.neon;
       round.options.forEach((meme, i) => {
         portals[i].image.material.map = textures.get(meme.id); portals[i].image.material.needsUpdate = true;
-        portals[i].frameMat.color.set('#bda4ff'); portals[i].frameMat.emissive.set('#9164ff');
+        portals[i].frameMat.color.set(theme.light); portals[i].frameMat.emissive.set(theme.light);
       });
-      wallMat.color.set(['#33304e', '#28394a', '#3c3049'][Math.floor(Math.random() * 3)]);
+      wallMat.color.set(theme.wall); floorMat.color.set(theme.floor); rim.color.set(theme.light);
     },
     reveal(correct, selected) {
       portals.forEach((portal, i) => {

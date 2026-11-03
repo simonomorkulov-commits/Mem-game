@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, makeRound, answer, nextRound, move, portalAt } from '../client/game.js';
+import { TOTAL_ROUNDS } from '../client/data.js';
 
 test('Every room has three unique options, includes the answer, and never repeats the previous sound', () => {
   let previous;
@@ -13,16 +14,16 @@ test('Every room has three unique options, includes the answer, and never repeat
   }
 });
 
-test('A perfect nine-room run finishes with streak bonuses and only scores once per room', () => {
+test('A perfect full run finishes with streak bonuses and only scores once per room', () => {
   let state = newGame();
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < TOTAL_ROUNDS; i++) {
     state = answer(state, state.challenge.correctIndex);
     assert.equal(answer(state, 0), state);
     state = nextRound(state);
   }
   assert.equal(state.status, 'finished');
-  assert.equal(state.score, 1550);
-  assert.equal(state.correct, 9);
+  assert.equal(state.score, 550 + 200 * (TOTAL_ROUNDS - 4));
+  assert.equal(state.correct, TOTAL_ROUNDS);
   assert.equal(state.lives, 3);
 });
 

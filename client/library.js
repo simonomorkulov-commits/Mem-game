@@ -14,7 +14,7 @@ async function api(url, options) {
 function message(text, error = false) {
   $('library-status').textContent = text; $('library-status').classList.toggle('is-error', error);
 }
-export function initLibrary({ onOpen, onClose }) {
+export function initLibrary({ onOpen, onClose, onMemeAdded }) {
   let catalog, imageBlob, audioFile, duration, previewImageUrl, previewAudioUrl, busy = false, deleting, playing;
   let preparing = 0;
   function syncUploadButton() {
@@ -114,7 +114,8 @@ export function initLibrary({ onOpen, onClose }) {
     try {
       const form = new FormData(); form.set('name', $('meme-name').value.trim()); form.set('image', imageBlob, 'image.webp');
       form.set('audio', audioFile, audioFile.name); form.set('duration', String(duration));
-      await api('/api/memes', { method: 'POST', body: form });
+      const added = await api('/api/memes', { method: 'POST', body: form });
+      onMemeAdded?.(added.meme);
       $('upload-form').reset(); imageBlob = audioFile = null;
       $('image-preview').hidden = $('audio-preview').hidden = true; $('audio-preview').removeAttribute('src');
       $('image-label').textContent = 'Выбрать картинку'; $('audio-label').textContent = 'Выбрать звук'; previewVisibility();

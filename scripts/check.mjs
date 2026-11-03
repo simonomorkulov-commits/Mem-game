@@ -1,7 +1,7 @@
 import { access, readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { MEMES } from '../client/data.js';
-for (const name of ['data.js', 'game.js', 'scene.js', 'app.js', 'library.js', 'joystick.js', 'characters.js', 'character-picker.js', 'preferences.js']) {
+for (const name of ['data.js', 'game.js', 'scene.js', 'app.js', 'library.js', 'joystick.js', 'characters.js', 'character-picker.js', 'preferences.js', 'account.js', 'level-editor.js', 'scoring.js']) {
   execFileSync(process.execPath, ['--check', new URL('../client/' + name, import.meta.url).pathname.replace(/^\/(\w:)/, '$1')]);
 }
 for (const meme of MEMES) {

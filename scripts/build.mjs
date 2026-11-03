@@ -19,9 +19,12 @@ async function walk(dir = '') {
   }
 }
 await walk();
-let worker = await readFile(new URL('worker/index.js', root), 'utf8');
-worker = worker.replace("import { MEMES as BUILTIN_MEMES } from '../client/data.js';", () => `const BUILTIN_MEMES = ${JSON.stringify(MEMES)};`)
-  .replace('const ASSETS = {};', () => `const ASSETS = ${JSON.stringify(assets)};`);
+const modules = [];
+for (const file of ['client/scoring.js', 'worker/game-api.js', 'worker/index.js']) {
+  modules.push((await readFile(new URL(file, root), 'utf8')).replace(/^import .*;\r?$/gm, '').replace(/^export (?!default)/gm, ''));
+}
+let worker = `const BUILTIN_MEMES = ${JSON.stringify(MEMES)};\n` + modules.join('\n');
+worker = worker.replace('const ASSETS = {};', () => `const ASSETS = ${JSON.stringify(assets)};`);
 await mkdir(new URL('dist/server/', root), { recursive: true });
 await mkdir(new URL('dist/.openai/', root), { recursive: true });
 await writeFile(new URL('dist/server/index.js', root), worker);

@@ -1,4 +1,5 @@
 import { MEMES as BUILTIN_MEMES } from '../client/data.js';
+import { handleGameApi } from './game-api.js';
 
 const ASSETS = {}; // Replaced by scripts/build.mjs for the single-file Worker.
 const MAX_BODY = 13 * 1024 * 1024;
@@ -79,6 +80,13 @@ export default {
     try {
       const url = new URL(request.url), pathname = url.pathname;
       if (pathname.startsWith('/api/')) {
+        if (/^\/api\/(me|profile|leaderboard|levels|runs)(\/|$)/.test(pathname)) {
+          return await handleGameApi(request, env, { canManage, catalog: async () => {
+            if (!env.BUCKET) fail('Коллекция пока недоступна.', 503);
+            const [custom, config] = await Promise.all([records(env.BUCKET), settings(env.BUCKET)]);
+            return { all: [...custom, ...BUILTIN_MEMES], memes: config.includeBuiltins !== false || custom.length < 3 ? [...custom, ...BUILTIN_MEMES] : custom };
+          } });
+        }
         if (!env.BUCKET) return json({ error: 'Коллекция пока недоступна. Попробуй чуть позже.' }, 503);
         if (request.method !== 'GET') {
           if (!canManage(request, env)) return json({ error: 'Добавлять и удалять мемы может только автор игры. Войди в свой аккаунт.' }, 403);
@@ -95,6 +103,9 @@ export default {
         const deletion = pathname.match(/^\/api\/memes\/([a-f0-9-]{36})$/);
         if (deletion && request.method === 'DELETE') {
           const id = deletion[1]; if (!(await env.BUCKET.get(`records/${id}.json`))) return json({ error: 'Этот мем уже удалён.' }, 404);
+          if (env.DB && await env.DB.prepare('SELECT id FROM game_levels WHERE active = 1 AND (target_id = ? OR option_a = ? OR option_b = ? OR option_c = ?) LIMIT 1').bind(id, id, id, id).first()) {
+            fail('Этот мем используется в уровнях. Сначала измени или удали эти уровни.', 409);
+          }
           await env.BUCKET.delete(`records/${id}.json`);
           await env.BUCKET.delete([`media/${id}/image`, `media/${id}/audio`]);
           if ((await records(env.BUCKET)).length < 3) await env.BUCKET.put('settings.json', JSON.stringify({ includeBuiltins: true }));

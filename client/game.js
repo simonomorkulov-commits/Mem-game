@@ -1,4 +1,5 @@
 import { MEMES, TOTAL_ROUNDS, PORTAL_X } from './data.js';
+import { scoreAnswer } from './scoring.js';
 
 export function shuffle(values, random = Math.random) {
   const result = [...values];
@@ -25,11 +26,9 @@ export function newGame(random = Math.random, memes = MEMES) {
 export function answer(state, index) {
   if (state.status !== 'playing' || !Number.isInteger(index) || index < 0 || index > 2) return state;
   const correct = index === state.challenge.correctIndex;
-  const streak = correct ? state.streak + 1 : 0;
-  const gained = correct ? 100 + Math.min(streak - 1, 4) * 25 : 0;
-  return { ...state, status: 'result', score: state.score + gained, streak,
-    correct: state.correct + Number(correct), lives: state.lives - Number(!correct),
-    result: { correct, selected: index, gained, meme: state.challenge.target } };
+  const points = scoreAnswer(state, correct);
+  return { ...state, ...points, status: 'result',
+    result: { correct, selected: index, gained: points.gained, meme: state.challenge.target } };
 }
 
 export function nextRound(state, random = Math.random) {
