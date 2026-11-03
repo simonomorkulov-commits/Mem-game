@@ -5,7 +5,7 @@ const DUEL_STORAGE = 'igra-memov:duel:v1';
 export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare, activate, stop, play, reveal }) {
   let room = null, active = false, pollTimer, clockTimer, offset = 0, opened = false, action = false;
   let preparedKey = '', preparingKey = '', playedKey = '', revealedKey = '', readyRequested = false, pendingAnswer = null;
-  let generation = 0, networkLost = false, storedCode = '';
+  let generation = 0, networkLost = false, storedCode = '', roomListTimer;
   const requestedCode = new URLSearchParams(location.search).get('duel')?.toUpperCase();
   try { storedCode = localStorage.getItem(DUEL_STORAGE) || ''; } catch {}
   function remember(code) { storedCode = code || ''; try { if (code) localStorage.setItem(DUEL_STORAGE, code); else localStorage.removeItem(DUEL_STORAGE); } catch {} }
@@ -30,7 +30,7 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
     $('duel-host-ready').textContent = host?.ready ? 'Готов' : 'Не готов'; $('duel-guest-ready').textContent = guest?.ready ? 'Готов' : 'Не готов';
     $('duel-ready').disabled = action || !room.opponent || ['finished', 'cancelled'].includes(room.status);
     $('duel-ready').textContent = room.status === 'playing' ? 'Вернуться в дуэль' : 'Готов играть';
-    if (!networkLost) notice(room.status === 'lobby' ? room.opponent ? 'Вы оба в комнате. Нажмите «Готов играть».' : 'Отправь другу код или ссылку. Затем оба нажмите «Готов играть».' : room.status === 'playing' ? 'Дуэль продолжается. Вернись в комнату.' : 'Эта дуэль закончилась. Можно создать новую.');
+    if (!networkLost) notice(room.status === 'lobby' ? room.opponent ? 'Вы оба в комнате. Нажмите «Готов играть».' : room.isPublic ? 'Открытая комната видна всем в меню. Ждём соперника…' : 'Приватная комната. Отправь другу код или ссылку.' : room.status === 'playing' ? 'Дуэль продолжается. Вернись в комнату.' : 'Эта дуэль закончилась. Можно создать новую.');
   }
   function setRoom(data) {
     if (room && data.code === room.code && data.serverTime < room.serverTime) return;
@@ -51,6 +51,28 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
         const detail = document.createElement('small'); detail.textContent = `${row.played} дуэлей · ${row.draws} ничьих`; li.append(detail); list.append(li);
       }
     } catch (error) { $('duel-ranking-status').textContent = error.message; }
+  }
+  async function refreshRooms() {
+    clearTimeout(roomListTimer);
+    if (!opened || active || $('duel-controls').hidden) return;
+    try {
+      const data = await requestAPI('/api/duels/rooms');
+      if (!opened) return;
+      const list = $('duel-open-rooms'); list.replaceChildren();
+      $('duel-rooms-status').textContent = data.rooms.length ? 'Выбери комнату — код вводить не нужно.' : 'Свободных комнат пока нет. Создай открытую — другие игроки увидят её здесь.';
+      for (const item of data.rooms) {
+        const card = document.createElement('article'); card.className = 'open-room';
+        const text = document.createElement('div'), name = document.createElement('b'), detail = document.createElement('small');
+        name.textContent = item.host; detail.textContent = `${item.total} комнат · 1 / 2 игрока · подборка ${item.pack + 1}`; text.append(name, detail);
+        const button = document.createElement('button'); button.className = 'button secondary'; button.textContent = 'Играть';
+        button.addEventListener('click', () => { withAction(async () => {
+          try { setRoom(await post('/api/duels/' + item.code + '/join')); schedulePoll(50); }
+          finally { refreshRooms(); }
+        }); });
+        card.append(text, button); list.append(card);
+      }
+    } catch (error) { $('duel-rooms-status').textContent = error.message; }
+    finally { if (opened && !active && !$('duel-controls').hidden) roomListTimer = setTimeout(refreshRooms, document.hidden ? 15000 : 5000); }
   }
   function schedulePoll(delay = document.hidden ? 5000 : 1300) {
     clearTimeout(pollTimer); if (room && (active || opened)) pollTimer = setTimeout(poll, delay);
@@ -85,7 +107,7 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
   }
   async function open() {
     if (!canOpen() || active) return;
-    opened = true; $('duel-dialog').showModal(); notice('Открываем живые дуэли…');
+    opened = true; $('duel-dialog').showModal(); notice('Загружаем онлайн-комнаты…');
     refreshRanking();
     try {
       if (!await showAccess()) { notice('Войди и выбери ник, чтобы играть с другом.'); return; }
@@ -93,12 +115,11 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
       const current = await requestAPI('/api/duels/current');
       if (current.room && ['lobby', 'playing'].includes(current.room.status)) { setRoom(current.room); schedulePoll(100); }
       else {
-        room = null; notice('Создай комнату или введи код друга.');
+        room = null; notice('Выбери открытую комнату, создай свою или введи код друга.');
         if (requestedCode) { $('duel-code-input').value = requestedCode; notice('Код друга уже введён. Нажми «Войти».'); }
-        else if (storedCode) {
-          try { const previous = await requestAPI('/api/duels/' + storedCode); if (previous.status === 'finished') { setRoom(previous); notice('Предыдущая дуэль закончилась. Создай новую или введи код друга.'); $('duel-lobby').hidden = true; $('duel-controls').hidden = false; } } catch {}
-        }
+        else if (storedCode) remember('');
       }
+      refreshRooms();
     } catch (error) { notice(error.message, true); }
   }
   async function withAction(callback) {
@@ -191,15 +212,15 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
   }
   function leaveView(clear = true) {
     active = false; readyRequested = false; pendingAnswer = null; generation++;
-    clearTimeout(pollTimer); clearInterval(clockTimer); clockTimer = null; stop();
+    clearTimeout(pollTimer); clearTimeout(roomListTimer); clearInterval(clockTimer); clockTimer = null; stop();
     $('duel-hud').hidden = $('duel-stage').hidden = true; exit();
     if (clear) { room = null; remember(''); }
   }
   function askLeave() { if (!active) return; stop(); $('duel-leave-dialog').showModal(); }
   $('duel-button').addEventListener('click', open);
   $('duel-close').addEventListener('click', () => $('duel-dialog').close());
-  $('duel-dialog').addEventListener('close', () => { opened = false; if (!active) { clearTimeout(pollTimer); generation++; } });
-  $('duel-create-form').addEventListener('submit', event => { event.preventDefault(); withAction(async () => { setRoom(await post('/api/duels', { pack: Number($('duel-pack').value) })); schedulePoll(50); }); });
+  $('duel-dialog').addEventListener('close', () => { opened = false; clearTimeout(roomListTimer); if (!active) { clearTimeout(pollTimer); generation++; } });
+  $('duel-create-form').addEventListener('submit', event => { event.preventDefault(); withAction(async () => { setRoom(await post('/api/duels', { pack: Number($('duel-pack').value), isPublic: $('duel-visibility').value === 'public' })); clearTimeout(roomListTimer); schedulePoll(50); }); });
   $('duel-join-form').addEventListener('submit', event => { event.preventDefault(); withAction(async () => {
     const code = $('duel-code-input').value.replace(/\s+/g, '').toUpperCase();
     if (!/^[A-Z2-9]{6}$/.test(code)) throw Error('Введи код из шести букв и цифр.');
@@ -207,7 +228,7 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
   }); });
   $('duel-ready').addEventListener('click', ready);
   $('duel-profile').addEventListener('click', () => account.openProfile());
-  $('profile-dialog').addEventListener('close', () => { if (opened && !room) showAccess().then(allowed => { if (allowed) loadOptions(); }).catch(error => notice(error.message, true)); });
+  $('profile-dialog').addEventListener('close', () => { if (opened && !room) showAccess().then(async allowed => { if (allowed) { await loadOptions(); refreshRooms(); } }).catch(error => notice(error.message, true)); });
   $('duel-code-input').addEventListener('input', configureSignIn);
   $('duel-copy-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText(room.code); notice('Код скопирован: ' + room.code); } catch { notice('Передай другу код: ' + room.code); } });
   $('duel-share').addEventListener('click', async () => {
@@ -217,7 +238,7 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
     catch (error) { if (error.name !== 'AbortError') notice('Ссылка на дуэль: ' + url.href); }
   });
   $('duel-lobby-leave').addEventListener('click', () => { if (room?.status === 'playing') { ready().then(askLeave); return; }
-    withAction(async () => { await post(endpoint('leave')); room = null; remember(''); generation++; clearTimeout(pollTimer); await showAccess(); notice('Ты вышел из комнаты. Можно создать новую дуэль.'); });
+    withAction(async () => { await post(endpoint('leave')); room = null; remember(''); generation++; clearTimeout(pollTimer); await showAccess(); refreshRooms(); notice('Ты вышел из комнаты. Выбери открытую или создай новую.'); });
   });
   $('duel-exit').addEventListener('click', askLeave);
   $('duel-leave-cancel').addEventListener('click', () => { $('duel-leave-dialog').close(); renderGame(); });
@@ -228,6 +249,7 @@ export function initDuels({ account, canOpen, enter, exit, unlockAudio, prepare,
     const data = await post(endpoint('rematch')); leaveView(false); room = null; setRoom(data); await open();
   }));
   $('duel-ranking-refresh').addEventListener('click', refreshRanking);
+  $('duel-rooms-refresh').addEventListener('click', refreshRooms);
   document.addEventListener('visibilitychange', () => { if (active && document.hidden) stop(); if (!document.hidden && (active || opened)) schedulePoll(0); });
   if (requestedCode || new URLSearchParams(location.search).has('duels')) { if (requestedCode) $('duel-code-input').value = requestedCode; open(); }
   return { answer, askLeave, suspend: stop, refresh: renderGame, get active() { return active; }, get canPlay() { return isPlayable(); }, get challenge() { return room?.challenge; } };

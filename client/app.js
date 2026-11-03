@@ -18,6 +18,7 @@ let audioContext, master, compressor, source, soundTimer;
 let preferences = readPreferences();
 let volume = preferences.volume, muted = preferences.muted, joystickControls;
 let accountUI, levelEditor, duelUI;
+let nextRoomTimer, advancing = false;
 const buffers = new Map();
 
 function announce(message) { $('announcer').textContent = message; }
@@ -28,7 +29,21 @@ function pauseForDialog() {
   if (duelUI?.active) { duelUI.suspend(); return; }
   if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); }
 }
-function resumeIfUncovered() { if (duelUI?.active) duelUI.refresh(); else if (paused && !document.querySelector('dialog[open]')) resume(); }
+function resumeIfUncovered() {
+  if (duelUI?.active) duelUI.refresh();
+  else if (!document.querySelector('dialog[open]')) {
+    if (state?.status === 'result') scheduleNextRoom(400);
+    else if (paused) resume();
+  }
+}
+function scheduleNextRoom(delay) {
+  clearTimeout(nextRoomTimer);
+  const expected = state;
+  nextRoomTimer = setTimeout(() => {
+    if (state !== expected || state?.status !== 'result' || document.hidden || document.querySelector('dialog[open]')) return;
+    next();
+  }, delay);
+}
 function stopAudio() {
   if (source) { try { source.stop(); } catch { /* Already ended. */ } source = null; }
   clearTimeout(soundTimer); $('wave').classList.remove('playing');
@@ -93,6 +108,8 @@ function updateHud() {
   $('progress').setAttribute('aria-label', `Комната ${state.round} из ${state.total}`);
 }
 async function beginRoom() {
+  clearTimeout(nextRoomTimer); $('next-button').hidden = true;
+  const expected = state;
   $('finish-actions').hidden = true;
   stopControls();
   paused = false; world.setActive(false); stopAudio();
@@ -100,13 +117,15 @@ async function beginRoom() {
   $('loading-overlay').hidden = false; $('loading-status').textContent = 'Открываем следующую комнату…';
   try { await Promise.all([world.setRound(state.challenge), loadAudio([state.challenge.target])]); }
   catch { showError('Не удалось загрузить картинку или звук. Обнови страницу и попробуй снова.'); return; }
+  if (state !== expected) return;
   world.reset(); world.setActive(true); $('loading-overlay').hidden = true;
   $('feedback-overlay').hidden = true; $('play-overlay').hidden = false;
-  updateHud(); playMeme();
+  updateHud(); if (document.hidden) pause(); else playMeme();
   announce(`Комната ${state.round}. Слушай мем и зайди в подходящую картинку.`);
 }
 async function start() {
   if (!world || starting) return;
+  clearTimeout(nextRoomTimer);
   starting = true; $('start-button').disabled = true;
   $('loading-overlay').hidden = false; $('loading-status').textContent = 'Включаем мемные звуки…';
   try {
@@ -144,13 +163,15 @@ async function enterPortal(index) {
   $('feedback-icon').innerHTML = icon(correct ? 'check' : 'x');
   $('feedback-kicker').textContent = correct ? 'МЕМНАЯ ПАМЯТЬ НЕ ПОДВЕЛА' : 'БЫВАЕТ. ЭТО ЖЕ МЕМЫ.';
   $('feedback-title').textContent = correct ? (state.streak > 1 ? `Серия ×${state.streak}!` : 'Тот самый мем!') : 'Не тот портал';
-  $('feedback-text').textContent = correct ? `Это ${meme.name}. Продолжаем путешествие?` : `Звучал ${meme.name}. Правильная картинка — ${state.result.correctIndex + 1}.`;
+  $('feedback-text').textContent = correct ? `Это ${meme.name}. ${state.finished ? 'Считаем результат…' : 'Открываем следующую комнату…'}` : `Звучал ${meme.name}. Правильная картинка — ${state.result.correctIndex + 1}.`;
   $('feedback-points').innerHTML = correct ? `+${gained}<small>${gained > 100 ? `100 за мем + ${gained - 100} за серию` : 'ОЧКОВ В ТВОЮ КОПИЛКУ'}</small>` : `<span style="color:var(--pink)">−1 жизнь</span><small>Осталось: ${state.lives}</small>`;
-  $('next-button').querySelector('span').textContent = state.finished ? 'Посмотреть результат' : 'Следующая комната';
-  playFeedback(correct); $('next-button').focus({ preventScroll: true });
+  $('next-button').hidden = true;
+  playFeedback(correct);
   announce(`${correct ? 'Верно' : 'Ошибка'}. ${meme.name}. Очки: ${state.score}. Жизни: ${state.lives}.`);
+  scheduleNextRoom(correct ? 1200 : 2100);
 }
 function showFinish() {
+  clearTimeout(nextRoomTimer); $('next-button').hidden = false;
   if (state.score > best) {
     best = state.score; isNewRecord = true; $('best-score').textContent = best;
     try { localStorage.setItem(storageKey, String(best)); } catch { /* Scores still work without storage. */ }
@@ -170,12 +191,16 @@ function showFinish() {
 }
 async function next() {
   if (state?.status === 'finished') { start(); return; }
-  if (state?.status !== 'result') return;
+  if (state?.status !== 'result' || advancing) return;
+  clearTimeout(nextRoomTimer);
   if (state.finished) { state.status = 'finished'; showFinish(); return; }
-  $('next-button').disabled = true;
-  try { state = await currentRun(state); if (state.status === 'finished') showFinish(); else await beginRoom(); }
+  const previous = state; advancing = true;
+  try {
+    const current = await currentRun(previous); if (state !== previous) return;
+    state = current; if (state.status === 'finished') showFinish(); else await beginRoom();
+  }
   catch (error) { showError(error.message); }
-  finally { $('next-button').disabled = false; }
+  finally { advancing = false; }
 }
 function pause() {
   if (duelUI?.active) { duelUI.askLeave(); return; }
@@ -189,9 +214,11 @@ function resume() {
   paused = false; world.setActive(true); playMeme(); $('scene').focus({ preventScroll: true });
 }
 async function home() {
+  clearTimeout(nextRoomTimer);
+  const previous = state; state = null;
   stopControls();
-  if (state?.runId && !state.finished) {
-    try { await finishRun(state); } catch { /* A later sign-in can resume a run if the connection is lost. */ }
+  if (previous?.runId && !previous.finished) {
+    try { await finishRun(previous); } catch { /* A later sign-in can resume a run if the connection is lost. */ }
   }
   state = null; paused = false; stopAudio(); world.setActive(false); world.reset();
   document.body.classList.remove('in-game'); $('pause-dialog').close();
@@ -200,6 +227,7 @@ async function home() {
   $('start-button').focus({ preventScroll: true });
 }
 function showError(message) {
+  clearTimeout(nextRoomTimer);
   $('loading-overlay').hidden = true; $('error-message').textContent = message; $('error-overlay').hidden = false;
   world?.setActive(false); stopAudio();
 }
@@ -297,7 +325,12 @@ window.addEventListener('keydown', event => {
   if (event.code === 'Space') { event.preventDefault(); playMeme(); }
   if (['Digit1', 'Digit2', 'Digit3'].includes(event.code)) { event.preventDefault(); selectPortal(Number(event.code.slice(-1)) - 1); }
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && !document.querySelector('dialog[open]')) { if (duelUI?.active) duelUI.suspend(); else pause(); } });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearTimeout(nextRoomTimer);
+    if (!document.querySelector('dialog[open]')) { if (duelUI?.active) duelUI.suspend(); else pause(); }
+  } else if (state?.status === 'result') scheduleNextRoom(400);
+});
 
 try {
   world = await createWorld($('scene'), enterPortal, stopControls, selectedCharacter());

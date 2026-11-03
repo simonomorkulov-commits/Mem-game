@@ -118,3 +118,36 @@ test('Both players can request the same rematch without duplicating the match or
   const stats = await json(request(env, '/api/duels/ranking', null)); assert.equal(stats.rows[0].played, 1);
   env.DB.close();
 });
+
+test('The room menu lists only explicitly public, vacant rooms and exposes no private game state', async () => {
+  const env = await setup(), privateRoom = await create(env);
+  const publicRoom = await json(request(env, '/api/duels', 'friend', 'POST', { pack: 1, isPublic: true }));
+  assert.equal(privateRoom.isPublic, false); assert.equal(publicRoom.isPublic, true);
+  const listed = await json(request(env, '/api/duels/rooms', 'third'));
+  assert.deepEqual(listed.rooms.map(r => r.code), [publicRoom.code]);
+  assert.equal(listed.rooms[0].host, 'Игрок_friend'); assert.equal(listed.rooms[0].total, 5);
+  for (const key of ['snapshot', 'host_id', 'guest_id', 'challenge']) assert.equal(key in listed.rooms[0], false);
+  assert.equal((await json(request(env, '/api/duels/rooms', 'friend'))).rooms.length, 0);
+  assert.equal((await json(request(env, '/api/duels/rooms', null))).rooms.length, 1);
+  await join(env, publicRoom.code, 'third');
+  assert.equal((await json(request(env, '/api/duels/rooms', null))).rooms.length, 0);
+  assert.equal((await request(env, '/api/duels/' + publicRoom.code, 'host')).status, 403);
+  env.DB.close();
+});
+
+test('Offline, expired and closed public rooms cannot remain in the menu', async () => {
+  const env = await setup();
+  const created = await json(request(env, '/api/duels', 'host', 'POST', { isPublic: true }));
+  await env.DB.prepare('UPDATE duel_rooms SET host_seen = ? WHERE code = ?').bind(Date.now() - 46000, created.code).run();
+  assert.equal((await json(request(env, '/api/duels/rooms', 'friend'))).rooms.length, 0);
+  const staleJoin = await join(env, created.code); assert.equal(staleJoin.status, 409); assert.match(staleJoin.error, /не в сети/);
+  await get(env, created.code);
+  assert.equal((await json(request(env, '/api/duels/rooms', 'friend'))).rooms.length, 1);
+  await env.DB.prepare('UPDATE duel_rooms SET expires_at = ? WHERE code = ?').bind(Date.now() - 1, created.code).run();
+  assert.equal((await json(request(env, '/api/duels/rooms', 'friend'))).rooms.length, 0);
+  assert.equal((await join(env, created.code)).status, 409);
+  const another = await json(request(env, '/api/duels', 'host', 'POST', { isPublic: true }));
+  await request(env, '/api/duels/' + another.code + '/leave', 'host', 'POST', {});
+  assert.equal((await json(request(env, '/api/duels/rooms', null))).rooms.length, 0);
+  env.DB.close();
+});

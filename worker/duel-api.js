@@ -60,7 +60,7 @@ async function duelView(env, room, user) {
       ready: !!(id === room.host_id ? room.ready_host : room.ready_guest) };
   }
   const own = answers.find(a => a.player_id === user && a.round_index === room.round_index);
-  const response = { code: room.code, status: room.status, phase: room.phase, round: room.round_index + 1, total: snapshot.length, pack: room.pack,
+  const response = { code: room.code, status: room.status, phase: room.phase, isPublic: !!room.is_public, round: room.round_index + 1, total: snapshot.length, pack: room.pack,
     serverTime: now, startsAt: room.starts_at, endsAt: room.ends_at, nextAt: room.reveal_at ? room.reveal_at + DUEL_REVEAL_MS : null,
     loadDeadline: room.load_deadline, expiresAt: room.expires_at, you: player(user), opponent: player(user === room.host_id ? room.guest_id : room.host_id),
     isHost: user === room.host_id, outcome: room.status === 'finished' ? room.winner_id ? room.winner_id === user ? 'win' : 'loss' : 'draw' : null,
@@ -87,7 +87,7 @@ async function duelCreate(env, services, user, body) {
     const id = crypto.randomUUID(), code = duelCode();
     try {
       await env.DB.batch([
-        env.DB.prepare('INSERT INTO duel_rooms (id, code, host_id, pack, snapshot, host_seen, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(id, code, user, data.pack, data.snapshot, now, now, now + 20 * 60000),
+        env.DB.prepare('INSERT INTO duel_rooms (id, code, host_id, pack, snapshot, host_seen, created_at, expires_at, is_public) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(id, code, user, data.pack, data.snapshot, now, now, now + 20 * 60000, Number(body.isPublic === true)),
         env.DB.prepare('INSERT INTO duel_seats (player_id, room_id) VALUES (?, ?)').bind(user, id)
       ]);
       return duelRow(env, code);
@@ -102,6 +102,7 @@ async function duelJoin(env, room, user) {
   room = await duelAdvance(env, room);
   if ([room.host_id, room.guest_id].includes(user)) return room;
   if (room.status !== 'lobby' || room.guest_id) duelFail('В этой дуэли уже два игрока или она закончилась.', 409);
+  if (room.is_public && room.host_seen < Date.now() - 45000) duelFail('Автор комнаты уже не в сети. Выбери другую комнату.', 409);
   const current = await duelCurrent(env, user);
   if (current && ['lobby', 'playing'].includes(current.status)) duelFail('Сначала выйди из своей текущей дуэли.', 409);
   try {
@@ -164,8 +165,15 @@ async function duelRanking(env, user) {
     you: own ? { wins: own.wins, played: own.played, draws: own.draws } : null });
 }
 
+async function duelOpenRooms(env, user) {
+  const rows = (await env.DB.prepare("SELECT r.code, r.pack, json_array_length(r.snapshot) AS total, p.nickname FROM duel_rooms r JOIN players p ON p.id = r.host_id WHERE r.is_public = 1 AND r.status = 'lobby' AND r.guest_id IS NULL AND r.expires_at > ? AND r.host_seen > ? AND r.host_id <> ? ORDER BY r.created_at DESC LIMIT 30")
+    .bind(Date.now(), Date.now() - 45000, user || '').all()).results;
+  return duelJSON({ rooms: rows.map(row => ({ code: row.code, host: row.nickname, pack: row.pack, total: row.total, players: 1, capacity: 2 })) });
+}
+
 export async function handleDuelApi(request, env, services) {
   const url = new URL(request.url), path = url.pathname, user = services.user;
+  if (path === '/api/duels/rooms' && request.method === 'GET') return duelOpenRooms(env, user);
   if (path === '/api/duels/ranking' && request.method === 'GET') return duelRanking(env, user);
   if (path === '/api/duels/options' && request.method === 'GET') {
     const levels = await services.levels(); return duelJSON({ packs: Array.from({ length: Math.ceil(levels.length / 5) }, (_, index) => ({ index, title: `Комнаты ${index * 5 + 1}–${Math.min(levels.length, index * 5 + 5)}`, total: Math.min(5, levels.length - index * 5) })) });

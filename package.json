@@ -1,6 +1,6 @@
 {
   "name": "igra-memov",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "description": "3D-игра: услышь мем и зайди в правильную картинку",
@@ -10,5 +10,7 @@
     "test": "node --test tests/*.test.mjs",
     "check": "node scripts/check.mjs"
   },
-  "engines": { "node": ">=22.13.0" }
+  "engines": {
+    "node": ">=22.13.0"
+  }
 }
