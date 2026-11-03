@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111116">
+  <meta name="description" content="Услышь звук мема и проведи персонажа в правильную картинку. Девять комнат, три портала и только твоя мемная память.">
+  <title>Игра мемов — узнай звук, выбери портал</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M11 4 5 9H2v6h3l6 5ZM16 8c2 2 2 6 0 8m4-12c5 4 5 12 0 16"/></symbol>
+    <symbol id="i-muted" viewBox="0 0 24 24"><path d="M11 4 5 9H2v6h3l6 5ZM16 9l6 6m0-6-6 6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 24 24"><path d="M7 3h10v6a5 5 0 0 1-10 0Zm0 2H3v3c0 3 2 5 5 5m9-8h4v3c0 3-2 5-5 5m-4 1v6m-5 1h10"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21 3.5 12.5C-3 5 7-2 12 5c5-7 15 0 8.5 7.5Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M20 8a9 9 0 1 0 1 9M20 2v6h-6"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14m8-14v14" stroke-width="4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m14 2-10 12h7l-1 8L21 9h-8Z" fill="currentColor" stroke="none"/></symbol>
+  </defs></svg>
+  <div class="page-shell">
+    <header class="header">
+      <a class="brand" href="./" aria-label="Игра мемов — главная"><span class="brand-mark">м.</span><span>игра мемов<span class="brand-sub">ЗВУК ЗНАКОМЫЙ. А МЕМ?</span></span></a>
+      <div class="header-actions">
+        <span class="record"><svg><use href="#i-cup"/></svg><span class="record-label">Рекорд</span> <b id="best-score">0</b></span>
+        <button id="rules-button" class="icon-button" aria-label="Как играть">?</button>
+        <button id="mute-button" class="icon-button" aria-label="Выключить звук" aria-pressed="false"><svg><use href="#i-sound"/></svg></button>
+      </div>
+    </header>
+    <main>
+      <div class="intro" id="intro">
+        <div class="eyebrow"><span></span> ПРОВЕРКА НА МЕМНУЮ ПАМЯТЬ</div>
+        <h1>Слышал этот мем?<br><span>Тогда тебе в этот портал.</span><i>↙</i></h1>
+        <p>Один звук. Три картинки. Не перепутай дверь.</p>
+      </div>
+      <section class="game-frame" id="game-frame" aria-label="Игровая комната">
+        <canvas id="scene" aria-label="3D-комната с персонажем и тремя картинками. Используйте WASD, стрелки или кнопки порталов." tabindex="0"></canvas>
+        <div class="scene-vignette"></div>
+        <div class="room-label" id="room-label"><span class="live-dot"></span> МЕМНАЯ КОМНАТА <span class="room-version">/ 01</span></div>
+        <div class="hud" id="hud" hidden>
+          <div class="hud-room"><span>КОМНАТА</span><b><span id="round-number">01</span><small> / 09</small></b></div>
+          <div class="hud-progress" id="progress" aria-label="Прогресс"></div>
+          <div class="hud-right"><div class="lives" id="lives" aria-label="Три жизни"></div><span class="score"><svg><use href="#i-bolt"/></svg><b id="score">0</b></span><button id="pause-button" class="icon-button" aria-label="Пауза"><svg><use href="#i-pause"/></svg></button></div>
+        </div>
+        <div class="menu-overlay" id="menu-overlay">
+          <div class="scene-title"><span class="tiny-tag">ВКЛЮЧИ ЗВУК</span><h2>Твой слух.<br>Твой <em>мемный</em><br>выход.</h2><p>Проведи персонажа в картинку,<br>которая подходит к звуку.</p></div>
+          <div class="start-area"><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><span class="start-caption">9 комнат <i>·</i> 3 жизни <i>·</i> много знакомых звуков</span></div>
+          <div class="floating-note">наушники —<br>хорошая идея <span>♪</span></div>
+        </div>
+        <div class="play-overlay" id="play-overlay" hidden>
+          <div class="sound-prompt"><div class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></div><span id="sound-status">Слушай. Узнавай. Заходи.</span><button id="replay-button" aria-label="Повторить звук мема"><svg><use href="#i-repeat"/></svg><span>Ещё раз</span><kbd>Пробел</kbd></button></div>
+          <div class="portal-buttons" id="portal-buttons" role="group" aria-label="Пройти к картинке"><button data-portal="0"><kbd>1</kbd> Левый портал</button><button data-portal="1"><kbd>2</kbd> Центральный</button><button data-portal="2"><kbd>3</kbd> Правый портал</button></div>
+          <div class="movement-tip" id="movement-tip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>или стрелки — двигаться</span><i>·</i><span>Нажми на картинку — персонаж подойдёт сам</span></div>
+          <div class="dpad" id="dpad" aria-label="Управление персонажем"><button data-key="KeyW" aria-label="Вперёд">↑</button><button data-key="KeyA" aria-label="Влево">←</button><button data-key="KeyS" aria-label="Назад">↓</button><button data-key="KeyD" aria-label="Вправо">→</button></div>
+        </div>
+        <div class="feedback-overlay" id="feedback-overlay" hidden><div class="feedback-card"><div id="feedback-icon" class="feedback-icon"></div><span class="eyebrow" id="feedback-kicker"></span><h2 id="feedback-title"></h2><p id="feedback-text"></p><div class="feedback-points" id="feedback-points"></div><button class="button primary" id="next-button"><span>Следующая комната</span><svg><use href="#i-arrow"/></svg></button></div></div>
+        <div class="loading-overlay" id="loading-overlay"><div class="loader"></div><span id="loading-status" role="status">Строим мемную комнату…</span></div>
+        <div class="error-overlay" id="error-overlay" hidden><h2>Комната пока не открылась</h2><p id="error-message"></p><button class="button primary" id="retry-button">Попробовать снова</button></div>
+      </section>
+      <div class="below-game"><span><span class="online-dot"></span> Никаких установок. Сразу в мемы.</span><label class="volume"><svg><use href="#i-sound"/></svg><input id="volume" type="range" min="0" max="100" value="65" aria-label="Громкость звука"><span id="volume-value">65%</span></label></div>
+      <section class="how-it-works" aria-label="Как играть">
+        <div class="step"><span class="step-number">01</span><div><h3>Лови звук</h3><p>Услышь короткий мем. Узнал?</p></div><span class="step-art">↗</span></div>
+        <div class="step"><span class="step-number">02</span><div><h3>Выбирай картинку</h3><p>Перед тобой три портала. Один верный.</p></div><span class="step-art">▧</span></div>
+        <div class="step"><span class="step-number">03</span><div><h3>Заходи в мем</h3><p>Двигай персонажа и собирай очки.</p></div><span class="step-art">✳</span></div>
+      </section>
+    </main>
+    <footer><span>игра мемов <span class="footer-dot">✳</span> только хорошие вайбы</span><span>Сделано для тех, кто слишком долго сидит в интернете.</span></footer>
+  </div>
+  <dialog id="rules-dialog"><form method="dialog"><button class="dialog-close icon-button" aria-label="Закрыть"><svg><use href="#i-x"/></svg></button></form><span class="eyebrow">ТВОЙ ПУТЬ В МЕМЫ</span><h2>Всё просто.<br>Доверься ушам.</h2><ol><li><b>Слушай звук.</b> Его можно повторить кнопкой «Ещё раз» или пробелом.</li><li><b>Найди подходящую картинку.</b> Используй WASD, стрелки или нажми на портал. Клавиши 1, 2, 3 тоже ведут к картинкам.</li><li><b>Зайди в портал.</b> Верный ответ даёт 100 очков. Серия ответов добавляет до 100 бонусных очков за комнату.</li></ol><p class="dialog-note">Пройди 9 комнат. У тебя 3 жизни. Таймера нет — можно подумать. Esc ставит игру на паузу.</p><form method="dialog"><button class="button primary">Понятно, я в деле <svg><use href="#i-check"/></svg></button></form></dialog>
+  <dialog id="pause-dialog"><span class="eyebrow">МЕМЫ ПОДОЖДУТ</span><h2>Пауза.</h2><p>Комната никуда не денется.</p><button class="button primary" id="resume-button"><svg><use href="#i-play"/></svg>Продолжить</button><button class="button secondary" id="home-button">В главное меню</button></dialog>
+  <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">Для игры включите JavaScript в браузере.</p></noscript>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
