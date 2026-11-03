@@ -111,7 +111,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
   }
   async function open(next = 'find') {
     if (!canOpen() || active) return;
-    opened = true; pane(next); $('online-dialog').showModal(); notice(next === 'create' ? 'Создай комнату для 2–4 игроков.' : 'Загружаем комнаты…');
+    opened = true; pane(next); signInLink(); $('online-dialog').showModal(); notice(next === 'create' ? 'Создай комнату для 2–4 игроков.' : 'Загружаем комнаты…');
     try {
       await access();
       if (allowed) {
