@@ -20,7 +20,7 @@ async function walk(dir = '') {
 }
 await walk();
 const modules = [];
-for (const file of ['client/scoring.js', 'worker/duel-api.js', 'worker/game-api.js', 'worker/index.js']) {
+for (const file of ['client/scoring.js', 'worker/duel-api.js', 'worker/match-api.js', 'worker/game-api.js', 'worker/index.js']) {
   modules.push((await readFile(new URL(file, root), 'utf8')).replace(/^import .*;\r?$/gm, '').replace(/^export (?!default)/gm, ''));
 }
 let worker = `const BUILTIN_MEMES = ${JSON.stringify(MEMES)};\n` + modules.join('\n');

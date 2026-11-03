@@ -1,0 +1,87 @@
+.online-entry-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 9px; }
+.online-entry-buttons .button { margin: 0; width: 100%; min-width: 0; min-height: 48px; padding: 0 12px; font-size: 14px; border-color: #a784cf; background: #39294de8; color: #e2cfff; }
+.online-dialog .community-heading h2 { font-size: clamp(25px, 7vw, 30px); }
+.online-dialog .community-heading .eyebrow { font-size: 9px; line-height: 1.6; }
+.online-dialog .field-label { display: block; }
+.online-dialog select { display: block; margin: 9px 0 20px; width: 100%; min-height: 52px; background: #15111d; border: 1px solid #6b527c; border-radius: 9px; color: #f3eafa; padding: 12px; font: inherit; }
+.online-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.online-section-heading h3 { font-size: 16px; margin: 0; }
+.online-section-heading .text-button { font-size: 12px; padding: 0 6px; }
+.online-room-list { display: grid; gap: 10px; margin-bottom: 20px; }
+.online-room { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #17121f; border: 1px solid #69517b; border-radius: 13px; padding: 14px 12px; }
+.online-room > div { flex: 1; min-width: 0; }
+.online-room b { display: block; font-size: 15px; color: #e3cbfc; overflow-wrap: anywhere; }
+.online-room small { display: block; font-size: 12px; line-height: 1.6; color: #b6a2c8; margin-top: 6px; }
+.online-room .button { width: auto; min-width: 88px; min-height: 49px; margin: 0; padding: 0 13px; font-size: 14px; }
+.online-password-toggle { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 85px; border-block: 1px solid #503b60; cursor: pointer; }
+.online-password-toggle b { display: block; font-size: 14px; }
+.online-password-toggle small { display: block; font-size: 12px; color: #bca6cf; margin-top: 7px; line-height: 1.6; }
+.online-password-toggle input { width: 26px; height: 26px; accent-color: var(--lime); flex-shrink: 0; }
+.online-lobby-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 22px; }
+.online-lobby-title h3 { font-size: 22px; margin: 0; overflow-wrap: anywhere; }
+.online-lobby-title > span { font-size: 11px; color: #c7a9df; flex-shrink: 0; }
+.online-members { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+.online-member { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; min-width: 0; min-height: 115px; border: 1px solid #645071; border-radius: 13px; background: #17121f; padding: 15px 8px; text-align: center; }
+.online-member.is-you { border-color: var(--lime); }
+.online-member.empty { border-style: dashed; opacity: .65; }
+.online-member > b { font-size: 14px; overflow-wrap: anywhere; }
+.online-member > span { font-size: 11px; color: #bda6cf; }
+.online-member > small { color: var(--lime); font-size: 12px; }
+#online-share, #online-lobby-leave, #online-to-find { display: block; margin: 8px auto; text-align: center; }
+#online-lobby-leave { color: #e8acbd; }
+.online-ranking-section { border-top: 1px solid #503b60; padding-top: 18px; margin-top: 20px; }
+.online-ranking-section summary { min-height: 44px; cursor: pointer; color: #d0b4e8; font-size: 14px; }
+.group-hud { position: absolute; left: 0; right: 0; top: 0; z-index: 5; padding: 5px 14px 13px; background: linear-gradient(#14101cfa, #14101cdd 80%, transparent); pointer-events: none; }
+.group-hud-line { display: flex; align-items: center; gap: 15px; min-height: 40px; font-size: 13px; }
+.group-hud-line > b { color: #dbc6f0; }
+.group-hud-line > span { flex: 1; color: #bda7cf; }
+.group-hud-line .icon-button { width: 42px; height: 40px; pointer-events: auto; font-size: 25px; }
+.group-scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.group-score { border: 1px solid #5d4771; border-radius: 8px; padding: 7px; min-width: 0; background: #281c3880; }
+.group-score.is-you { border-color: #b9ff6688; }
+.group-score.left { opacity: .5; }
+.group-score span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #cebddb; }
+.group-score b { display: block; color: #d8baff; font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.group-score.is-you b { color: var(--lime); }
+.duel-stage { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 120px 18px 30px; pointer-events: none; background: #11101950; }
+.duel-stage-card { width: min(450px, 100%); max-height: 100%; overflow-y: auto; text-align: center; padding: 24px; border: 1px solid #8a70a5; border-radius: 19px; background: #20192ff0; backdrop-filter: blur(7px); }
+.duel-stage-card h2 { font-size: 31px; margin: 15px 0 12px; line-height: 1.1; }
+.duel-stage-card > p { font-size: 14px; line-height: 1.6; color: #d4c3e6; margin: 0; white-space: pre-line; }
+#duel-stage-count { color: var(--lime); font-size: 45px; font-weight: 800; margin: 10px 0; font-variant-numeric: tabular-nums; }
+#duel-result-actions { pointer-events: auto; margin-top: 17px; }
+#duel-result-actions .button { width: 100%; min-height: 50px; }
+#duel-result-actions .community-note { font-size: 12px; margin: 15px 0 0; }
+#duel-leave-dialog { width: min(450px, calc(100% - 28px)); }
+#duel-leave-dialog h2 { font-size: 28px; }
+#duel-leave-dialog p { font-size: 14px; line-height: 1.7; }
+.duel-mode .sound-prompt { top: 119px; }
+.duel-mode .touch-controls { z-index: 4; }
+.duel-mode .movement-tip { display: none; }
+@media (max-width: 960px), (pointer: coarse) {
+  .online-entry-buttons { gap: 8px; margin-top: 8px; }
+  .online-entry-buttons .button { min-height: 46px; padding: 0 8px; font-size: 12px; border-radius: 12px; }
+  .group-hud { top: env(safe-area-inset-top); padding: 3px 12px 12px; }
+  .group-hud-line { min-height: 40px; }
+  .group-scores { gap: 6px; }
+  .group-score { padding: 6px; }
+  .group-score span { font-size: 10px; }
+  .group-score b { font-size: 20px; }
+  .duel-mode .sound-prompt { top: calc(113px + env(safe-area-inset-top)); }
+  .duel-stage { padding: calc(115px + env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom)); }
+  .duel-stage-card { padding: 22px 18px; }
+  .duel-stage-card h2 { font-size: 28px; }
+  .duel-stage-card .eyebrow { font-size: 9px; line-height: 1.5; }
+}
+@media (max-width: 960px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape) {
+  .group-hud { padding-top: 0; }
+  .group-hud-line { min-height: 34px; }
+  .group-hud-line .icon-button { height: 34px; }
+  .group-score { padding: 4px 7px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .group-score b { font-size: 18px; margin: 0; }
+  .duel-mode .sound-prompt { top: calc(77px + env(safe-area-inset-top)); max-width: 240px; }
+  .duel-stage { padding: 80px 12px 12px; }
+  .duel-stage-card { padding: 15px 18px; max-width: 470px; }
+  .duel-stage-card h2 { font-size: 23px; margin: 9px 0; }
+  #duel-stage-count { font-size: 29px; margin: 0; }
+  #duel-result-actions { margin-top: 9px; }
+}

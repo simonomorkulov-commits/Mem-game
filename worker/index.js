@@ -80,7 +80,7 @@ export default {
     try {
       const url = new URL(request.url), pathname = url.pathname;
       if (pathname.startsWith('/api/')) {
-        if (/^\/api\/(me|profile|leaderboard|levels|runs|duels)(\/|$)/.test(pathname)) {
+        if (/^\/api\/(me|profile|leaderboard|levels|runs|duels|matches)(\/|$)/.test(pathname)) {
           return await handleGameApi(request, env, { canManage, catalog: async () => {
             if (!env.BUCKET) fail('Коллекция пока недоступна.', 503);
             const [custom, config] = await Promise.all([records(env.BUCKET), settings(env.BUCKET)]);

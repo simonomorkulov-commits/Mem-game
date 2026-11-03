@@ -5,7 +5,7 @@ import { initCharacterPicker, selectedCharacter } from './character-picker.js';
 import { readPreferences, savePreferences } from './preferences.js';
 import { initAccountUI, startRun, answerRun, currentRun, finishRun } from './account.js';
 import { initLevelEditor } from './level-editor.js';
-import { initDuels } from './duels.js';
+import { initMultiplayer as initDuels } from './multiplayer.js';
 
 const $ = id => document.getElementById(id);
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
