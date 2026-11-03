@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, makeRound, answer, nextRound, move, portalAt } from '../dist/game.js';
+import { newGame, makeRound, answer, nextRound, move, portalAt } from '../client/game.js';
 
 test('Every room has three unique options, includes the answer, and never repeats the previous sound', () => {
   let previous;

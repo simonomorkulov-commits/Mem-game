@@ -1,6 +1,8 @@
 import { createWorld } from './scene.js';
 import { MEMES } from './data.js';
 import { newGame, answer, nextRound } from './game.js';
+import { initLibrary, getCatalog } from './library.js';
+import { bindJoystick } from './joystick.js';
 
 const $ = id => document.getElementById(id);
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -11,6 +13,7 @@ $('best-score').textContent = best;
 let world, state = null, paused = false, starting = false, isNewRecord = false;
 let audioContext, master, compressor, source, soundTimer;
 let volume = .65, muted = false;
+let activeMemes = MEMES;
 const buffers = new Map();
 
 function announce(message) { $('announcer').textContent = message; }
@@ -28,16 +31,19 @@ function ensureAudio() {
   }
   return audioContext.resume();
 }
-async function loadAudio() {
-  let loaded = buffers.size;
-  await Promise.all(MEMES.filter(m => !buffers.has(m.id)).map(async meme => {
+async function loadAudio(memes) {
+  await Promise.all(memes.filter(m => !buffers.has(m.id)).map(async meme => {
     const response = await fetch(meme.audio);
     if (!response.ok) throw Error('Не удалось загрузить звук. Проверь соединение и попробуй снова.');
     const buffer = await audioContext.decodeAudioData(await response.arrayBuffer());
     if (!buffer.duration) throw Error('Один из звуков не воспроизводится. Обнови страницу.');
     buffers.set(meme.id, buffer);
-    $('loading-status').textContent = `Загружаем звуки: ${++loaded} из ${MEMES.length}…`;
+    $('loading-status').textContent = 'Готовим звук мема…';
   }));
+  for (const id of buffers.keys()) {
+    if (buffers.size <= 10) break;
+    if (!memes.some(m => m.id === id)) buffers.delete(id);
+  }
 }
 function playMeme() {
   if (!state || state.status !== 'playing' || paused || !audioContext) return;
@@ -71,8 +77,13 @@ function updateHud() {
   $('progress').innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${i < state.round - 1 ? 'passed' : i === state.round - 1 ? 'current' : ''}"></i>`).join('');
   $('progress').setAttribute('aria-label', `Комната ${state.round} из 9`);
 }
-function beginRoom() {
-  paused = false; world.setRound(state.challenge); world.reset(); world.setActive(true);
+async function beginRoom() {
+  paused = false; world.setActive(false); stopAudio();
+  $('feedback-overlay').hidden = true; $('play-overlay').hidden = true;
+  $('loading-overlay').hidden = false; $('loading-status').textContent = 'Открываем следующую комнату…';
+  try { await Promise.all([world.setRound(state.challenge), loadAudio([state.challenge.target])]); }
+  catch { showError('Не удалось загрузить картинку или звук. Обнови страницу и попробуй снова.'); return; }
+  world.reset(); world.setActive(true); $('loading-overlay').hidden = true;
   $('feedback-overlay').hidden = true; $('play-overlay').hidden = false;
   document.querySelectorAll('[data-portal]').forEach((button, i) => {
     button.classList.remove('selected');
@@ -86,11 +97,12 @@ async function start() {
   starting = true; $('start-button').disabled = true;
   $('loading-overlay').hidden = false; $('loading-status').textContent = 'Включаем мемные звуки…';
   try {
-    await ensureAudio(); await loadAudio();
-    state = newGame(); isNewRecord = false; document.body.classList.add('in-game');
+    await ensureAudio();
+    activeMemes = (await getCatalog()).memes;
+    state = newGame(Math.random, activeMemes); isNewRecord = false; document.body.classList.add('in-game');
     $('menu-overlay').hidden = true; $('room-label').hidden = true; $('hud').hidden = false;
     $('loading-overlay').hidden = true;
-    beginRoom(); $('scene').focus({ preventScroll: true });
+    await beginRoom(); $('scene').focus({ preventScroll: true });
     $('game-frame').scrollIntoView({ block: 'center', behavior: 'instant' });
   } catch (error) { showError(error.message || 'Браузер не смог включить звук. Обнови страницу и попробуй снова.'); }
   finally { starting = false; $('start-button').disabled = false; }
@@ -131,7 +143,7 @@ function showFinish() {
   announce(`Игра закончена. ${state.score} очков. Угадано мемов: ${state.correct}.`);
 }
 function next() {
-  if (state?.status === 'finished') { state = newGame(); isNewRecord = false; beginRoom(); return; }
+  if (state?.status === 'finished') { start(); return; }
   if (state?.status !== 'result') return;
   state = nextRound(state);
   if (state.status === 'finished') showFinish(); else beginRoom();
@@ -159,6 +171,7 @@ function showError(message) {
 $('start-button').addEventListener('click', start);
 $('next-button').addEventListener('click', next);
 $('replay-button').addEventListener('click', playMeme);
+$('touch-replay').addEventListener('click', playMeme);
 $('pause-button').addEventListener('click', pause);
 $('resume-button').addEventListener('click', () => $('pause-dialog').close());
 $('pause-dialog').addEventListener('close', () => { if (paused) resume(); });
@@ -182,18 +195,19 @@ $('volume').addEventListener('input', event => {
   muted = false; applyVolume();
 });
 document.querySelectorAll('[data-portal]').forEach(button => button.addEventListener('click', () => selectPortal(Number(button.dataset.portal))));
-document.querySelectorAll('[data-key]').forEach(button => {
-  button.addEventListener('pointerdown', event => { event.preventDefault(); button.setPointerCapture(event.pointerId); world?.setDirection(button.dataset.key, true); });
-  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(name, () => world?.setDirection(button.dataset.key, false));
+bindJoystick($('joystick'), $('joystick-thumb'), (x, z) => world?.setJoystick(x, z));
+initLibrary({
+  onOpen() { if (state?.status === 'playing') { paused = true; world.setActive(false); stopAudio(); } },
+  onClose() { if (paused && !$('pause-dialog').open) resume(); }
 });
 window.addEventListener('keydown', event => {
-  if ($('rules-dialog').open || $('pause-dialog').open || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
   if (event.code === 'Escape' && state?.status === 'playing') { event.preventDefault(); pause(); }
   if (event.repeat || paused || state?.status !== 'playing') return;
   if (event.code === 'Space') { event.preventDefault(); playMeme(); }
   if (['Digit1', 'Digit2', 'Digit3'].includes(event.code)) { event.preventDefault(); selectPortal(Number(event.code.slice(-1)) - 1); }
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && !$('rules-dialog').open) pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !document.querySelector('dialog[open]')) pause(); });
 
 try {
   world = await createWorld($('scene'), enterPortal, () => { document.querySelectorAll('[data-portal]').forEach(b => b.classList.remove('selected')); });

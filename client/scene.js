@@ -4,7 +4,7 @@ import { move, portalAt } from './game.js';
 
 export async function createWorld(canvas, onPortal, onWalk) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -53,7 +53,9 @@ export async function createWorld(canvas, onPortal, onWalk) {
     box(.8, .3, .8, ink, x, .1, -5.4);
   }
   const loader = new THREE.TextureLoader();
-  const textures = new Map(await Promise.all(MEMES.map(async meme => {
+  const textures = new Map();
+  async function loadTextures(memes) {
+    await Promise.all(memes.filter(meme => !textures.has(meme.id)).map(async meme => {
     const texture = await loader.loadAsync(meme.image);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -61,8 +63,14 @@ export async function createWorld(canvas, onPortal, onWalk) {
     const frameAspect = 2.42 / 3.36;
     if (aspect > frameAspect) { texture.repeat.x = frameAspect / aspect; texture.offset.x = (1 - texture.repeat.x) / 2; }
     else { texture.repeat.y = aspect / frameAspect; texture.offset.y = (1 - texture.repeat.y) / 2; }
-    return [meme.id, texture];
-  })));
+      textures.set(meme.id, texture);
+    }));
+    for (const [id, texture] of textures) {
+      if (textures.size <= 12) break;
+      if (!memes.some(m => m.id === id)) { texture.dispose(); textures.delete(id); }
+    }
+  }
+  await loadTextures(MEMES.slice(0, 3));
   const portalMeshes = [];
   const portals = PORTAL_X.map((x, index) => {
     const group = new THREE.Group(); group.position.set(x, 0, -5.55); scene.add(group);
@@ -122,8 +130,9 @@ export async function createWorld(canvas, onPortal, onWalk) {
   scene.add(dust);
 
   let position = { x: 0, z: 4 }, active = false, target = null, last = performance.now(), elapsed = 0, phase = 0;
+  let joystick = { x: 0, z: 0 };
   const keys = new Set();
-  const clearKeys = () => { keys.clear(); target = null; destination.visible = false; };
+  const clearKeys = () => { keys.clear(); joystick = { x: 0, z: 0 }; target = null; destination.visible = false; };
   const keyMap = { KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
   window.addEventListener('keydown', event => {
     if (!active || !keyMap[event.code] || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
@@ -166,6 +175,7 @@ export async function createWorld(canvas, onPortal, onWalk) {
         direction = { x: target.x - position.x, z: target.z - position.z };
         if (Math.hypot(direction.x, direction.z) < .12) { target = null; direction = { x: 0, z: 0 }; destination.visible = false; }
       }
+      if (Math.hypot(joystick.x, joystick.z) > .15) direction = joystick;
       position = move(position, direction, dt);
       const portal = portalAt(position.x, position.z);
       if (portal !== -1) { active = false; clearKeys(); onPortal(portal); }
@@ -198,7 +208,9 @@ export async function createWorld(canvas, onPortal, onWalk) {
     reset() { position = { x: 0, z: 4.6 }; character.rotation.y = 0; clearKeys(); },
     walkToPortal(index) { if (index >= 0 && index < 3) walkTo(PORTAL_X[index], -4.9); },
     setDirection(code, down) { if (!active) return; if (down) { keys.add(code); target = null; destination.visible = false; } else keys.delete(code); },
-    setRound(round) {
+    setJoystick(x, z) { if (!active) return; joystick = { x, z }; if (Math.hypot(x, z) > .15) { target = null; destination.visible = false; } },
+    async setRound(round) {
+      await loadTextures(round.options);
       round.options.forEach((meme, i) => {
         portals[i].image.material.map = textures.get(meme.id); portals[i].image.material.needsUpdate = true;
         portals[i].frameMat.color.set('#bda4ff'); portals[i].frameMat.emissive.set('#9164ff');

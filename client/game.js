@@ -9,16 +9,17 @@ export function shuffle(values, random = Math.random) {
   return result;
 }
 
-export function makeRound(previousId, random = Math.random) {
-  const target = shuffle(MEMES.filter(m => m.id !== previousId), random)[0];
-  const others = shuffle(MEMES.filter(m => m.id !== target.id), random).slice(0, 2);
+export function makeRound(previousId, random = Math.random, memes = MEMES) {
+  if (memes.length < 3 || new Set(memes.map(m => m.id)).size !== memes.length) throw Error('Для комнаты нужны минимум три разных мема.');
+  const target = shuffle(memes.filter(m => m.id !== previousId), random)[0];
+  const others = shuffle(memes.filter(m => m.id !== target.id), random).slice(0, 2);
   const options = shuffle([target, ...others], random);
   return { target, options, correctIndex: options.findIndex(m => m.id === target.id) };
 }
 
-export function newGame(random = Math.random) {
+export function newGame(random = Math.random, memes = MEMES) {
   return { status: 'playing', round: 1, score: 0, lives: 3, streak: 0,
-    correct: 0, total: TOTAL_ROUNDS, challenge: makeRound(null, random), result: null };
+    correct: 0, total: TOTAL_ROUNDS, memes: [...memes], challenge: makeRound(null, random, memes), result: null };
 }
 
 export function answer(state, index) {
@@ -35,7 +36,7 @@ export function nextRound(state, random = Math.random) {
   if (state.status !== 'result') return state;
   if (state.lives <= 0 || state.round >= state.total) return { ...state, status: 'finished' };
   return { ...state, status: 'playing', round: state.round + 1,
-    challenge: makeRound(state.challenge.target.id, random), result: null };
+    challenge: makeRound(state.challenge.target.id, random, state.memes), result: null };
 }
 
 export function portalAt(x, z) {

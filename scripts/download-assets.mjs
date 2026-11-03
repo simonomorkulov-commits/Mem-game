@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const base = new URL('../dist/', import.meta.url);
+const base = new URL('../client/', import.meta.url);
 await mkdir(new URL('assets/', base), { recursive: true });
 await mkdir(new URL('vendor/', base), { recursive: true });
 const soundBase = 'https://raw.githubusercontent.com/PareekshithPalat/IDE-Error-Soundboard/main/sounds/';

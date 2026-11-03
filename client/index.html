@@ -8,6 +8,7 @@
   <title>Игра мемов — узнай звук, выбери портал</title>
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./mobile-library.css">
 </head>
 <body>
   <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -27,6 +28,7 @@
     <header class="header">
       <a class="brand" href="./" aria-label="Игра мемов — главная"><span class="brand-mark">м.</span><span>игра мемов<span class="brand-sub">ЗВУК ЗНАКОМЫЙ. А МЕМ?</span></span></a>
       <div class="header-actions">
+        <button id="library-button" class="library-button">Мои мемы <span>+</span></button>
         <span class="record"><svg><use href="#i-cup"/></svg><span class="record-label">Рекорд</span> <b id="best-score">0</b></span>
         <button id="rules-button" class="icon-button" aria-label="Как играть">?</button>
         <button id="mute-button" class="icon-button" aria-label="Выключить звук" aria-pressed="false"><svg><use href="#i-sound"/></svg></button>
@@ -56,7 +58,7 @@
           <div class="sound-prompt"><div class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></div><span id="sound-status">Слушай. Узнавай. Заходи.</span><button id="replay-button" aria-label="Повторить звук мема"><svg><use href="#i-repeat"/></svg><span>Ещё раз</span><kbd>Пробел</kbd></button></div>
           <div class="portal-buttons" id="portal-buttons" role="group" aria-label="Пройти к картинке"><button data-portal="0"><kbd>1</kbd> Левый портал</button><button data-portal="1"><kbd>2</kbd> Центральный</button><button data-portal="2"><kbd>3</kbd> Правый портал</button></div>
           <div class="movement-tip" id="movement-tip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>или стрелки — двигаться</span><i>·</i><span>Нажми на картинку — персонаж подойдёт сам</span></div>
-          <div class="dpad" id="dpad" aria-label="Управление персонажем"><button data-key="KeyW" aria-label="Вперёд">↑</button><button data-key="KeyA" aria-label="Влево">←</button><button data-key="KeyS" aria-label="Назад">↓</button><button data-key="KeyD" aria-label="Вправо">→</button></div>
+          <div class="touch-controls"><div class="joystick-area"><div id="joystick" class="joystick" role="group" aria-label="Джойстик: веди палец в направлении движения"><span class="joystick-arrows">↑<br>←　→<br>↓</span><span id="joystick-thumb" class="joystick-thumb"></span></div><span>ДВИГАЙСЯ</span></div><button id="touch-replay" class="touch-replay" aria-label="Повторить звук"><svg><use href="#i-sound"/></svg><span>Ещё раз</span></button></div>
         </div>
         <div class="feedback-overlay" id="feedback-overlay" hidden><div class="feedback-card"><div id="feedback-icon" class="feedback-icon"></div><span class="eyebrow" id="feedback-kicker"></span><h2 id="feedback-title"></h2><p id="feedback-text"></p><div class="feedback-points" id="feedback-points"></div><button class="button primary" id="next-button"><span>Следующая комната</span><svg><use href="#i-arrow"/></svg></button></div></div>
         <div class="loading-overlay" id="loading-overlay"><div class="loader"></div><span id="loading-status" role="status">Строим мемную комнату…</span></div>
@@ -71,8 +73,31 @@
     </main>
     <footer><span>игра мемов <span class="footer-dot">✳</span> только хорошие вайбы</span><span>Сделано для тех, кто слишком долго сидит в интернете.</span></footer>
   </div>
-  <dialog id="rules-dialog"><form method="dialog"><button class="dialog-close icon-button" aria-label="Закрыть"><svg><use href="#i-x"/></svg></button></form><span class="eyebrow">ТВОЙ ПУТЬ В МЕМЫ</span><h2>Всё просто.<br>Доверься ушам.</h2><ol><li><b>Слушай звук.</b> Его можно повторить кнопкой «Ещё раз» или пробелом.</li><li><b>Найди подходящую картинку.</b> Используй WASD, стрелки или нажми на портал. Клавиши 1, 2, 3 тоже ведут к картинкам.</li><li><b>Зайди в портал.</b> Верный ответ даёт 100 очков. Серия ответов добавляет до 100 бонусных очков за комнату.</li></ol><p class="dialog-note">Пройди 9 комнат. У тебя 3 жизни. Таймера нет — можно подумать. Esc ставит игру на паузу.</p><form method="dialog"><button class="button primary">Понятно, я в деле <svg><use href="#i-check"/></svg></button></form></dialog>
+  <dialog id="rules-dialog"><form method="dialog"><button class="dialog-close icon-button" aria-label="Закрыть"><svg><use href="#i-x"/></svg></button></form><span class="eyebrow">ТВОЙ ПУТЬ В МЕМЫ</span><h2>Всё просто.<br>Доверься ушам.</h2><ol><li><b>Слушай звук.</b> Его можно повторить кнопкой «Ещё раз» или пробелом.</li><li><b>Найди подходящую картинку.</b> На телефоне используй джойстик или нажми на картинку. На компьютере — WASD, стрелки или клавиши 1, 2, 3.</li><li><b>Зайди в портал.</b> Верный ответ даёт 100 очков. Серия ответов добавляет до 100 бонусных очков за комнату.</li></ol><p class="dialog-note">Пройди 9 комнат. У тебя 3 жизни. Таймера нет — можно подумать. Esc ставит игру на паузу.</p><form method="dialog"><button class="button primary">Понятно, я в деле <svg><use href="#i-check"/></svg></button></form></dialog>
   <dialog id="pause-dialog"><span class="eyebrow">МЕМЫ ПОДОЖДУТ</span><h2>Пауза.</h2><p>Комната никуда не денется.</p><button class="button primary" id="resume-button"><svg><use href="#i-play"/></svg>Продолжить</button><button class="button secondary" id="home-button">В главное меню</button></dialog>
+  <dialog id="library-dialog" class="library-dialog">
+    <div class="library-heading"><div><span class="eyebrow">ТВОЯ ОБЩАЯ КОЛЛЕКЦИЯ</span><h2>Мои мемы<span id="library-count">0</span></h2></div><button id="library-close" class="icon-button" aria-label="Закрыть коллекцию"><svg><use href="#i-x"/></svg></button></div>
+    <p class="library-description">Картинка + её звук. Добавляй с телефона или компьютера — мемы появятся у всех игроков.</p>
+    <p id="library-status" class="library-status" role="status" aria-live="polite"></p>
+    <div id="library-guest" hidden><p>Играть могут все. Добавлять мемы может только автор игры.</p><a href="/signin-with-chatgpt?return_to=%2F%3Fcollection%3D1" target="_top" class="button primary">Войти как автор</a></div>
+    <div id="library-admin" hidden>
+      <form id="upload-form" class="upload-form">
+        <label class="field-label" for="meme-name">Название мема<input id="meme-name" name="name" placeholder="Например, мой смешной кот" maxlength="60" required autocomplete="off"></label>
+        <div class="upload-files">
+          <label class="file-picker" for="meme-image"><span class="file-icon">▧</span><b id="image-label">Выбрать картинку</b><small>Фото из галереи · авто-сжатие</small><input id="meme-image" name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required></label>
+          <label class="file-picker" for="meme-audio"><span class="file-icon">♪</span><b id="audio-label">Выбрать звук</b><small>MP3, WAV, OGG, M4A · до 20 сек.</small><input id="meme-audio" name="audio" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a" required></label>
+        </div>
+        <div id="upload-preview" class="upload-preview" hidden><img id="image-preview" alt="Предпросмотр картинки" hidden><audio id="audio-preview" controls preload="metadata" hidden></audio></div>
+        <button id="upload-button" class="button primary" type="submit">Добавить в игру <span>+</span></button>
+      </form>
+      <label class="builtins-toggle"><input id="include-builtins" type="checkbox" checked><span><b>Добавлять встроенные мемы</b><small>Выключи, чтобы играть только с твоей коллекцией. Нужно хотя бы 3 своих мема.</small></span></label>
+    </div>
+    <div class="collection-heading"><h3>Твои добавленные мемы</h3><button id="refresh-library" class="text-button">Обновить</button></div>
+    <div id="custom-list" class="custom-list"></div>
+    <p id="empty-library" class="empty-library" hidden>Пока здесь пусто. Добавь первую пару «картинка + звук».</p>
+  </dialog>
+  <dialog id="delete-dialog"><span class="eyebrow">МОИ МЕМЫ</span><h2>Удалить этот мем?</h2><p id="delete-description"></p><button id="confirm-delete" class="button danger">Удалить</button><button id="cancel-delete" class="button secondary">Оставить</button></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
   <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
   <noscript><p class="noscript">Для игры включите JavaScript в браузере.</p></noscript>
   <script type="module" src="./app.js"></script>
