@@ -1,13 +1,14 @@
+import { authenticatedFetch } from './account.js';
 const $ = id => document.getElementById(id);
 const isPhone = () => navigator.maxTouchPoints > 0 || matchMedia('(max-width: 960px), (pointer: coarse)').matches;
 export async function getCatalog() {
-  const response = await fetch('/api/memes', { cache: 'no-store' });
+  const response = await authenticatedFetch('/api/memes', { cache: 'no-store' });
   const data = await response.json();
   if (!response.ok) throw Error(data.error || 'Не удалось открыть коллекцию. Попробуй ещё раз.');
   return data;
 }
 async function api(url, options) {
-  const response = await fetch(url, options); const data = await response.json();
+  const response = await authenticatedFetch(url, options); const data = await response.json();
   if (!response.ok) throw Error(data.error || 'Изменение не сохранилось. Попробуй ещё раз.');
   return data;
 }

@@ -178,7 +178,7 @@ export async function handleDuelApi(request, env, services) {
   if (path === '/api/duels/options' && request.method === 'GET') {
     const levels = await services.levels(); return duelJSON({ packs: Array.from({ length: Math.ceil(levels.length / 5) }, (_, index) => ({ index, title: `Комнаты ${index * 5 + 1}–${Math.min(levels.length, index * 5 + 5)}`, total: Math.min(5, levels.length - index * 5) })) });
   }
-  if (!user) duelFail('Для живой дуэли войди через ChatGPT и выбери ник.', 401);
+  if (!user) duelFail('Для игры сохрани свой ник в профиле.', 401);
   if (!services.profile) duelFail('Сначала выбери ник в профиле.', 428);
   if (path === '/api/duels/current' && request.method === 'GET') {
     const room = await duelCurrent(env, user); return duelJSON({ room: room ? await duelView(env, room, user) : null });

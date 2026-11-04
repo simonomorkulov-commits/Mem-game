@@ -1,5 +1,6 @@
 import { MEMES as BUILTIN_MEMES } from '../client/data.js';
 import { handleGameApi } from './game-api.js';
+import { resolvePlayerIdentity } from './account-api.js';
 
 const ASSETS = {}; // Replaced by scripts/build.mjs for the single-file Worker.
 const MAX_BODY = 13 * 1024 * 1024;
@@ -8,6 +9,7 @@ const json = (value, status = 200) => Response.json(value, { status, headers: { 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 
 function canManage(request, env) {
+  if (env.PLAYER_AUTH?.isAdmin) return true;
   const email = request.headers.get('oai-authenticated-user-email');
   return !!env.MEME_ADMIN_EMAIL && !!email && email.toLowerCase() === env.MEME_ADMIN_EMAIL.toLowerCase();
 }
@@ -80,7 +82,8 @@ export default {
     try {
       const url = new URL(request.url), pathname = url.pathname;
       if (pathname.startsWith('/api/')) {
-        if (/^\/api\/(me|profile|leaderboard|levels|runs|duels|matches)(\/|$)/.test(pathname)) {
+        if (env.DB) env = { ...env, PLAYER_AUTH: await resolvePlayerIdentity(request, env) };
+        if (/^\/api\/(me|profile|leaderboard|levels|runs|duels|matches|auth)(\/|$)/.test(pathname)) {
           return await handleGameApi(request, env, { canManage, catalog: async () => {
             if (!env.BUCKET) fail('Коллекция пока недоступна.', 503);
             const [custom, config] = await Promise.all([records(env.BUCKET), settings(env.BUCKET)]);

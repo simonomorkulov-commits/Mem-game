@@ -131,7 +131,7 @@ async function start() {
   try {
     await ensureAudio();
     const me = await accountUI.refresh();
-    if (me.signedIn && !me.profile) { $('loading-overlay').hidden = true; await accountUI.openProfile(); return; }
+    if (!me.profile) { $('loading-overlay').hidden = true; await accountUI.openProfile(start); return; }
     state = await startRun(); isNewRecord = false; document.body.classList.add('in-game');
     $('menu-overlay').hidden = true; $('room-label').hidden = true; $('hud').hidden = false;
     $('loading-overlay').hidden = true;
@@ -184,7 +184,7 @@ function showFinish() {
   $('feedback-points').innerHTML = `${state.score}<small>ОЧКОВ · РЕКОРД ${best}</small>`;
   $('next-button').querySelector('span').textContent = 'Сыграть ещё раз';
   $('finish-actions').hidden = false;
-  $('rating-result').textContent = state.ranked ? 'Результат сохранён в общем рейтинге.' : 'Войди и выбери ник, чтобы следующие результаты попали в рейтинг.';
+  $('rating-result').textContent = state.ranked ? 'Результат сохранён в общем рейтинге.' : 'Выбери ник, чтобы следующие результаты попали в рейтинг.';
   $('finish-profile').hidden = state.ranked;
   if (state.ranked) accountUI.refresh().catch(() => {});
   announce(`Игра закончена. ${state.score} очков. Угадано мемов: ${state.correct}.`);

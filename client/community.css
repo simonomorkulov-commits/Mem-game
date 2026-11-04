@@ -8,6 +8,10 @@
 .community-status { padding: 13px 15px; border: 1px solid #9c7fbc44; background: #31253c88; border-radius: 9px; font-size: 13px; line-height: 1.6; color: #c9bdd6; }
 .community-status.is-error { border-color: #ef7e9c88; color: #ffb7cb; }
 .community-note { font-size: 12px; color: #b1a0c0; line-height: 1.6; }
+.local-login-details { border-top: 1px solid #594169; margin: 23px 0 13px; padding-top: 12px; }
+.local-login-details > summary { min-height: 48px; padding: 13px 0; color: #d6b9ee; font-size: 14px; cursor: pointer; line-height: 1.6; }
+.profile-dialog .field-label { display: block; }
+#local-signout { display: block; margin: 15px auto 0; min-height: 48px; color: #d9a9bb; }
 .community-dialog .field-label { margin-top: 18px; }
 .community-dialog .field-label input, .community-dialog .field-label select { min-height: 50px; display: block; width: 100%; min-width: 0; background: #15111d; border: 1px solid #6b527c; border-radius: 9px; color: #f3eafa; font-size: 16px; padding: 12px; margin-top: 9px; }
 .community-dialog .button { min-height: 50px; font-size: 14px; }

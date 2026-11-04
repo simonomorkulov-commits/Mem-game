@@ -222,7 +222,7 @@ export async function handleMatchApi(request, env, services) {
     const members = await groupMembers(env, room.id);
     return groupJSON({ id: room.id, title: room.title, locked: !!room.password_hash, status: room.status, count: groupActive(members).length, capacity: 4, host: members.find(m => m.player_id === room.host_id)?.nickname || 'Игрок' });
   }
-  if (!user) groupFail('Войди через ChatGPT, чтобы играть онлайн.', 401);
+  if (!user) groupFail('Выбери и сохрани ник, чтобы играть онлайн.', 401);
   if (!services.profile) groupFail('Сначала выбери ник в профиле.', 428);
   if (path === '/api/matches/current' && request.method === 'GET') { const room = await groupCurrent(env, user); return groupJSON({ room: room && ['lobby', 'playing'].includes(room.status) ? await groupView(env, room, user) : null }); }
   if (path === '/api/matches' && request.method === 'POST') return groupJSON(await groupView(env, await groupCreate(env, services, user, await services.body(request)), user), 201);

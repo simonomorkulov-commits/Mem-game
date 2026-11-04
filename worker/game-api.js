@@ -1,11 +1,12 @@
 import { scoreAnswer, INITIAL_LIVES, DEFAULT_LEVEL_COUNT, ROOM_THEMES } from '../client/scoring.js';
 import { handleDuelApi } from './duel-api.js';
 import { handleMatchApi } from './match-api.js';
+import { resolvePlayerIdentity, handleAccountApi } from './account-api.js';
 
 const gameJSON = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 function gameFail(message, status = 400) { throw Object.assign(new Error(message), { status }); }
 async function gameHash(text) { return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(x => x.toString(16).padStart(2, '0')).join(''); }
-async function gameUser(request) { const id = request.headers.get('oai-authenticated-user-id'); return id ? gameHash('player:' + id) : null; }
+async function gameUser(request, env) { return (env.PLAYER_AUTH || await resolvePlayerIdentity(request, env)).id; }
 async function gameBody(request) {
   const reader = request.body?.getReader(); if (!reader) return {};
   let text = '', length = 0; const decoder = new TextDecoder();
@@ -169,7 +170,9 @@ export async function handleGameApi(request, env, services) {
   if (!env.DB) return gameJSON({ error: 'Профили и уровни пока недоступны. Попробуй чуть позже.' }, 503);
   const url = new URL(request.url), pathname = url.pathname, method = request.method;
   if (method !== 'GET' && request.headers.get('origin') && request.headers.get('origin') !== url.origin) gameFail('Открой игру на её сайте.', 403);
-  const user = await gameUser(request);
+  if (pathname.startsWith('/api/auth/')) return handleAccountApi(request, env, { body: gameBody });
+  const identity = env.PLAYER_AUTH || await resolvePlayerIdentity(request, env);
+  const user = identity.id;
   if (pathname === '/api/matches' || pathname.startsWith('/api/matches/')) return handleMatchApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody, levels: () => gameLevels(env, services), shuffle: gameShuffle });
   if (pathname === '/api/duels' || pathname.startsWith('/api/duels/')) {
     return handleDuelApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody,
@@ -177,7 +180,7 @@ export async function handleGameApi(request, env, services) {
   }
   if (pathname === '/api/me' && method === 'GET') {
     const profile = await gameProfile(env.DB, user);
-    return gameJSON({ signedIn: !!user, profile: gamePublicProfile(profile), canManage: services.canManage(request, env) });
+    return gameJSON({ signedIn: !!user, auth: { mode: identity.kind, hasPassword: identity.hasPassword }, profile: gamePublicProfile(profile), canManage: services.canManage(request, env) });
   }
   if (pathname === '/api/profile' && method === 'PUT') return gameSaveProfile(request, env, user);
   if (pathname === '/api/leaderboard' && method === 'GET') return gameRanking(env, user);

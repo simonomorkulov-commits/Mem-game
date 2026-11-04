@@ -18,14 +18,10 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
     $('online-heading').textContent = ({ find: 'Найти игры', create: 'Создать комнату', lobby: 'Комната игроков' })[next];
     if (next !== 'find') clearTimeout(listTimer);
   }
-  function signInLink() {
-    const returnTo = invitation ? '/?room=' + encodeURIComponent(invitation) : '/?online=' + (mode === 'create' ? 'create' : 'find');
-    $('online-signin').href = '/signin-with-chatgpt?return_to=' + encodeURIComponent(returnTo);
-  }
   async function access() {
     const me = await account.refresh(); allowed = me.signedIn && !!me.profile;
-    $('online-signin').hidden = me.signedIn; $('online-profile').hidden = !me.signedIn;
-    pane(mode); signInLink(); return allowed;
+    $('online-profile').hidden = false;
+    pane(mode); return allowed;
   }
   function lobby() {
     if (!room) return;
@@ -102,7 +98,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
     finally { if (opened && mode === 'find' && !active) listTimer = setTimeout(refreshRooms, document.hidden ? 15000 : 5000); }
   }
   async function chooseRoom(item) {
-    if (!allowed) { invitation = item.id; signInLink(); notice('Войди и выбери ник, чтобы присоединиться.'); $('online-auth').scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+    if (!allowed) { invitation = item.id; notice('Выбери ник, чтобы присоединиться.'); $('online-auth').scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
     if (item.locked) {
       selectedRoom = item; $('online-password-room').textContent = item.title; $('online-join-status').textContent = 'Пароль можно узнать у создателя комнаты.';
       $('online-join-password').value = ''; $('online-password-dialog').showModal(); return;
@@ -111,7 +107,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
   }
   async function open(next = 'find') {
     if (!canOpen() || active) return;
-    opened = true; pane(next); signInLink(); $('online-dialog').showModal(); notice(next === 'create' ? 'Создай комнату для 2–4 игроков.' : 'Загружаем комнаты…');
+    opened = true; pane(next); $('online-dialog').showModal(); notice(next === 'create' ? 'Создай комнату для 2–4 игроков.' : 'Загружаем комнаты…');
     try {
       await access();
       if (allowed) {
@@ -124,7 +120,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
       if (invitation && allowed) {
         const id = invitation; invitation = null;
         const preview = await requestAPI('/api/matches/' + id + '/preview'); await chooseRoom(preview);
-      } else notice(allowed ? next === 'create' ? 'Добавь пароль, если хочешь играть только со своими друзьями.' : 'Выбери комнату или создай свою.' : 'Для участия войди через ChatGPT и выбери ник.');
+      } else notice(allowed ? next === 'create' ? 'Добавь пароль, если хочешь играть только со своими друзьями.' : 'Выбери комнату или создай свою.' : 'Выбери ник один раз — игра сохранит его для следующих матчей.');
     } catch (error) { notice(error.message, true); }
   }
   function schedulePoll(delay = document.hidden ? 5000 : 1300) { clearTimeout(pollTimer); if (room && (opened || active)) pollTimer = setTimeout(poll, delay); }
