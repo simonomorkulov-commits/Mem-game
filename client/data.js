@@ -7,7 +7,10 @@ export const MEMES = [
   { id: 'part2-dveri', name: 'У дверного проёма', image: './assets/part2/02-dveri.jpg', audio: './assets/part2/02-dveri.mp3', contentAspect: 0.980926431, duration: 4.2, color: '#bd9cff' },
   { id: 'part2-rebenok', name: 'Ребёнок в маршрутке', image: './assets/part2/03-rebenok.jpg', audio: './assets/part2/03-rebenok.mp3', contentAspect: 1.000000000, duration: 3.067, color: '#ffb5ed' },
   { id: 'part2-mashina', name: 'Женщина в машине', image: './assets/part2/04-mashina.jpg', audio: './assets/part2/04-mashina.mp3', contentAspect: 0.829493088, duration: 2.733, color: '#79ddff' },
-  { id: 'part2-tarelka', name: 'Тарелка на столе', image: './assets/part2/05-tarelka.jpg', audio: './assets/part2/05-tarelka.mp3', contentAspect: 1.661691542, duration: 3.474, color: '#b8ff65' }
+  { id: 'part2-tarelka', name: 'Тарелка на столе', image: './assets/part2/05-tarelka.jpg', audio: './assets/part2/05-tarelka.mp3', contentAspect: 1.661691542, duration: 3.474, color: '#b8ff65' },
+  { id: 'part3-blue-costumes', name: 'В синих костюмах', image: './assets/part3/01-blue-costumes.jpg', audio: './assets/part3/01-blue-costumes.mp3', contentAspect: 1, duration: 4.1, color: '#79ddff' },
+  { id: 'part3-green-door', name: 'У зелёной двери', image: './assets/part3/02-green-door.jpg', audio: './assets/part3/02-green-door.mp3', contentAspect: 1.782178218, duration: 3.7, color: '#b8ff65' },
+  { id: 'part3-sunglasses', name: 'Мужчина в очках', image: './assets/part3/03-sunglasses.jpg', audio: './assets/part3/03-sunglasses.mp3', contentAspect: 1.782178218, duration: 3.7, color: '#ffda76' }
 ];
 export const TOTAL_ROUNDS = 30;
 export const PORTAL_X = [-4, 0, 4];

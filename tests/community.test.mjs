@@ -140,7 +140,7 @@ test('Starting after the pack replacement saves an old run and opens a new run w
 test('All five part-two memes are available to the author and playable in authored campaign rooms and a race pack', async () => {
   const env = setup(); await register(env, owner, 'ВтораяПодборка');
   const catalog = (await payload(await call(env, '/api/memes'))).data;
-  assert.equal(catalog.memes.length, 9);
+  assert.equal(catalog.memes.length, MEMES.length);
   const added = catalog.memes.filter(m => m.id.startsWith('part2-')); assert.equal(added.length, 5);
   await call(env, '/api/levels');
   for (let i = 0; i < added.length; i++) {
@@ -164,12 +164,34 @@ async function fourMemeStarterFixture(env) {
   }
 }
 
-test('The existing campaign uses all nine sounds and disjoint picture sets; a race receives its own fair shared plan', async () => {
+test('Three unique part-three memes join existing nine-meme starter rooms and remain selectable by the author', async () => {
+  const env = setup(); await register(env, owner, 'ТретьяПодборка'); await call(env, '/api/levels');
+  const oldPool = [...MEMES.filter(m => m.id.startsWith('part2-')), ...MEMES.filter(m => m.id.startsWith('jai-'))];
+  for (let i = 0; i < 30; i++) {
+    const target = oldPool[i % oldPool.length], others = oldPool.filter(m => m.id !== target.id), pairs = [];
+    for (let a = 0; a < others.length - 1; a++) for (let b = a + 1; b < others.length; b++) pairs.push([others[a], others[b]]);
+    const [a, b] = pairs[Math.floor(i / oldPool.length) % pairs.length];
+    await env.DB.prepare('UPDATE game_levels SET target_id = ?, option_a = ?, option_b = ?, option_c = ? WHERE id = ?').bind(target.id, target.id, a.id, b.id, `starter-${String(i + 1).padStart(3, '0')}`).run();
+  }
+  const fresh = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  const stored = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(fresh.runId).first(), snapshot = JSON.parse(stored.snapshot);
+  const targets = snapshot.slice(0, MEMES.length).map(l => l.target.id), added = MEMES.filter(m => m.id.startsWith('part3-'));
+  assert.equal(added.length, 3); assert.equal(new Set(targets).size, MEMES.length); assert.ok(added.every(m => targets.includes(m.id)));
+  for (const meme of added) {
+    assert.equal((await call(env, '/api/levels', 'POST', { title: meme.name, position: 1, targetId: meme.id, optionIds: [meme.id, 'jai-shchenok', 'jai-shapka'], theme: 'mint' }, owner)).status, 201);
+  }
+  const race = (await payload(await call(env, '/api/matches', 'POST', { pack: 0 }, owner))).data;
+  assert.ok(added.every(m => race.track.some(level => level.target.id === m.id)));
+  assert.ok(race.track.filter(l => l.target.id.startsWith('part3-')).every(l => l.target.audio.includes('/assets/part3/')));
+  env.DB.close();
+});
+
+test('The existing campaign uses all available sounds and disjoint picture sets; a race receives its own fair shared plan', async () => {
   const env = setup(); await register(env, owner, 'ВсеДевять'); await fourMemeStarterFixture(env);
   await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
   let run = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
   assert.equal(run.total, 30); const targets = []; let previous = [];
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < MEMES.length; i++) {
     targets.push(run.challenge.target.id);
     assert.equal(new Set(run.challenge.options.map(m => m.id)).size, 3);
     assert.ok(run.challenge.options.some(m => m.id === run.challenge.target.id));
@@ -217,8 +239,8 @@ test('Adding memes later automatically expands the next default game while a sta
   await call(env, `/api/runs/${first.runId}/finish`, 'POST', {}, owner);
   const next = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
   const stored = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(next.runId).first();
-  const snapshot = JSON.parse(stored.snapshot), targets = snapshot.slice(0, 12).map(l => l.target.id);
-  assert.equal(new Set(targets).size, 12); assert.ok(added.every(id => targets.includes(id)));
+  const snapshot = JSON.parse(stored.snapshot), poolSize = MEMES.length + added.length, targets = snapshot.slice(0, poolSize).map(l => l.target.id);
+  assert.equal(new Set(targets).size, poolSize); assert.ok(added.every(id => targets.includes(id)));
   for (let i = 1; i < snapshot.length; i++) assert.ok(snapshot[i].options.every(m => !snapshot[i - 1].options.some(p => p.id === m.id)));
   env.DB.close();
 });

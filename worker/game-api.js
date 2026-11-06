@@ -81,7 +81,7 @@ async function gameLevels(env, services, manage = false) {
   const catalog = await services.catalog(); await gameSeed(env.DB, catalog.memes);
   const rows = (await env.DB.prepare('SELECT * FROM game_levels WHERE active = 1 ORDER BY position, id').all()).results;
   const all = new Map(catalog.all.map(m => [m.id, m])), active = new Set(catalog.memes.map(m => m.id));
-  const pools = [gameStarterPool(catalog.memes.filter(m => m.id.startsWith('jai-') || m.id.startsWith('part2-'))), gameStarterPool(catalog.memes)].filter(pool => pool.length >= 3);
+  const pools = [gameStarterPool(catalog.memes.filter(m => m.id.startsWith('jai-') || m.id.startsWith('part2-'))), gameStarterPool(catalog.all.filter(m => !m.custom)), gameStarterPool(catalog.memes)].filter(pool => pool.length >= 3);
   const automaticPool = row => {
     const index = Number(row.id.slice(8)) - 1;
     if (!row.id.startsWith('starter-') || !Number.isInteger(index) || index < 0 || row.title !== `Комната ${index + 1}`) return undefined;

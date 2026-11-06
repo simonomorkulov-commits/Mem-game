@@ -1,0 +1,180 @@
+{
+  "source": "100% оригинальная продукция из Японии 🇯🇵Уходовоя косметика и мыломойкаАдреса-Филиал на Юнусали.mp4",
+  "selection": "Три новые мемные вставки. Три повтора, интервью и выступления с микрофонами исключены.",
+  "memes": [
+    {
+      "id": "01-blue-costumes",
+      "name": "В синих костюмах",
+      "start": 5.4,
+      "end": 9.5,
+      "crop": [
+        0,
+        280,
+        720,
+        720
+      ],
+      "duration": 4.1,
+      "image": "01-blue-costumes/image.jpg",
+      "audio": "01-blue-costumes/audio.mp3",
+      "preview": "01-blue-costumes/clip.mp4",
+      "sourceFrameSeconds": 7.5
+    },
+    {
+      "id": "02-green-door",
+      "name": "У зелёной двери",
+      "start": 70.43333333333334,
+      "end": 74.13333333333334,
+      "crop": [
+        0,
+        438,
+        720,
+        404
+      ],
+      "duration": 3.7,
+      "image": "02-green-door/image.jpg",
+      "audio": "02-green-door/audio.mp3",
+      "preview": "02-green-door/clip.mp4",
+      "sourceFrameSeconds": 72.4
+    },
+    {
+      "id": "03-sunglasses",
+      "name": "Мужчина в очках",
+      "start": 80.3,
+      "end": 84.0,
+      "crop": [
+        0,
+        438,
+        720,
+        404
+      ],
+      "duration": 3.7,
+      "image": "03-sunglasses/image.jpg",
+      "audio": "03-sunglasses/audio.mp3",
+      "preview": "03-sunglasses/clip.mp4",
+      "sourceFrameSeconds": 81.4
+    }
+  ],
+  "excluded": [
+    {
+      "start": 0,
+      "end": 5.4,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 9.5,
+      "end": 24.466666666666665,
+      "reason": "Уличные интервью с микрофоном"
+    },
+    {
+      "start": 24.466666666666665,
+      "end": 28.466666666666665,
+      "reason": "Повтор существующего «Эй, щенок!»; изображение и звук совпадают"
+    },
+    {
+      "start": 28.466666666666665,
+      "end": 33.733333333333334,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 33.733333333333334,
+      "end": 40.733333333333334,
+      "reason": "Повтор существующего «У дверного проёма»; изображение и звук совпадают"
+    },
+    {
+      "start": 40.733333333333334,
+      "end": 45.93333333333333,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 45.93333333333333,
+      "end": 52.56666666666667,
+      "reason": "Повтор существующего «Ребёнок в маршрутке»; та же сцена и совпадающий звук"
+    },
+    {
+      "start": 52.56666666666667,
+      "end": 58.46666666666667,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 58.46666666666667,
+      "end": 66.53333333333333,
+      "reason": "Выступление у микрофонов; исключено по предпочтению пользователя"
+    },
+    {
+      "start": 66.53333333333333,
+      "end": 70.43333333333334,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 74.13333333333334,
+      "end": 80.3,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 84.0,
+      "end": 94.66666666666667,
+      "reason": "Уличные интервью с микрофоном"
+    },
+    {
+      "start": 94.66666666666667,
+      "end": 102.37,
+      "reason": "Сцена с микрофонами; исключена по предпочтению пользователя"
+    }
+  ],
+  "duplicateComparison": [
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\01-shchenok.mp3",
+      "similarity": 0.91,
+      "sourceStart": 24.734,
+      "speed": 1
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\02-shapka.mp3",
+      "similarity": 0.099,
+      "sourceStart": 55.24,
+      "speed": 1.04
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\03-poklon.mp3",
+      "similarity": 0.091,
+      "sourceStart": 3.37,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\04-komputer.mp3",
+      "similarity": 0.082,
+      "sourceStart": 94.716,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\01-avtobus.mp3",
+      "similarity": 0.099,
+      "sourceStart": 93.249,
+      "speed": 1.02
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\02-dveri.mp3",
+      "similarity": 0.779,
+      "sourceStart": 36.529,
+      "speed": 1
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\03-rebenok.mp3",
+      "similarity": 0.646,
+      "sourceStart": 46.522,
+      "speed": 1
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\04-mashina.mp3",
+      "similarity": 0.104,
+      "sourceStart": 79.057,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\05-tarelka.mp3",
+      "similarity": 0.162,
+      "sourceStart": 5.879,
+      "speed": 1.02
+    }
+  ]
+}
