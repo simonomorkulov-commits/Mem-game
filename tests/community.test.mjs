@@ -39,8 +39,8 @@ test('Thirty starter rooms are seeded once and the owner can author, reorder and
   const initial = (await payload(await call(env, '/api/levels'))).data; assert.equal(initial.total, 30);
   assert.equal('targetId' in initial.levels[0], false);
   const rows = (await env.DB.prepare('SELECT target_id, option_a, option_b, option_c FROM game_levels').all()).results;
-  assert.equal(new Set(rows.map(r => r.target_id + ':' + [r.option_a, r.option_b, r.option_c].sort().join(','))).size, 30);
-  const draft = { title: 'Мой мемный уровень', position: 2, targetId: 'among-us', optionIds: ['bruh', 'among-us', 'metal-pipe'], theme: 'mint' };
+  assert.equal(new Set(rows.map(r => r.target_id + ':' + [r.option_a, r.option_b, r.option_c].sort().join(','))).size, 12);
+  const draft = { title: 'Мой мемный уровень', position: 2, targetId: 'jai-shapka', optionIds: ['jai-shchenok', 'jai-shapka', 'jai-poklon'], theme: 'mint' };
   assert.equal((await call(env, '/api/levels', 'POST', draft, visitor)).status, 403);
   assert.equal((await call(env, '/api/levels', 'POST', draft, owner)).status, 201);
   const edited = (await payload(await call(env, '/api/levels?manage=1', 'GET', undefined, owner))).data;
@@ -108,4 +108,30 @@ test('Guests can play without entering the rating; registered users can resume o
   const profile = (await payload(await call(env, '/api/me', 'GET', undefined, visitor))).data.profile;
   assert.equal(profile.wins, 1); assert.equal(profile.gamesPlayed, 1); assert.equal(profile.bestScore, 5750);
   env.DB.close();
+});
+
+test('The Jai pack upgrades existing starter rooms once without restoring deletions or overwriting edited rooms', async () => {
+  const env = setup(); await call(env, '/api/levels');
+  await env.DB.prepare("DELETE FROM game_config WHERE key = 'jai-pack-v1'").run();
+  await env.DB.prepare("UPDATE game_levels SET target_id = 'bruh', option_a = 'bruh', option_b = 'among-us', option_c = 'metal-pipe'").run();
+  await env.DB.prepare("DELETE FROM game_levels WHERE id = 'starter-002'").run();
+  await env.DB.prepare("UPDATE game_levels SET title = 'Мой уровень', target_id = 'jai-shchenok', option_a = 'jai-shchenok', option_b = 'jai-shapka', option_c = 'jai-poklon' WHERE id = 'starter-003'").run();
+  const levels = (await payload(await call(env, '/api/levels'))).data; assert.equal(levels.total, 29);
+  const stored = (await env.DB.prepare('SELECT * FROM game_levels').all()).results;
+  assert.ok(stored.every(r => [r.target_id, r.option_a, r.option_b, r.option_c].every(id => id.startsWith('jai-'))));
+  assert.equal(stored.find(r => r.id === 'starter-003').title, 'Мой уровень');
+  await env.DB.prepare("DELETE FROM game_levels WHERE id = 'starter-001'").run();
+  assert.equal((await payload(await call(env, '/api/levels'))).data.total, 28);
+  assert.ok(await env.DB.prepare("SELECT value FROM game_config WHERE key = 'jai-pack-v1'").first()); env.DB.close();
+});
+
+test('Starting after the pack replacement saves an old run and opens a new run with only the four selected memes', async () => {
+  const env = setup(); await register(env, owner, 'НоваяПодборка');
+  const first = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  const row = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(first.runId).first(), snapshot = JSON.parse(row.snapshot);
+  snapshot[0].target.id = 'bruh'; await env.DB.prepare('UPDATE game_runs SET snapshot = ?, score = 123 WHERE id = ?').bind(JSON.stringify(snapshot), first.runId).run();
+  const second = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  assert.notEqual(first.runId, second.runId); assert.equal(second.total, 30); assert.ok(second.challenge.target.id.startsWith('jai-'));
+  assert.equal((await payload(await call(env, '/api/me', 'GET', undefined, owner))).data.profile.bestScore, 123);
+  assert.equal((await env.DB.prepare('SELECT status FROM game_runs WHERE id = ?').bind(first.runId).first()).status, 'finished'); env.DB.close();
 });

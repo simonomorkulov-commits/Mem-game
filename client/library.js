@@ -25,13 +25,13 @@ export function initLibrary({ onOpen, onClose, onMemeAdded }) {
   const dialog = $('library-dialog');
   function stopPreview() { playing?.pause(); playing = null; $('audio-preview').pause(); }
   function render() {
-    $('library-count').textContent = catalog.custom.length;
+    $('library-count').textContent = catalog.memes.length;
     $('library-admin').hidden = !catalog.canManage; $('library-guest').hidden = catalog.canManage;
     $('include-builtins').checked = catalog.includeBuiltins;
-    $('empty-library').hidden = catalog.custom.length > 0;
+    $('empty-library').hidden = catalog.memes.length > 0;
     $('empty-library').textContent = catalog.canManage ? 'Пока здесь пусто. Добавь первую пару «картинка + звук».' : 'Автор скоро добавит свои мемы. Пока можно играть со встроенными.';
     const list = $('custom-list'); list.replaceChildren();
-    for (const meme of catalog.custom) {
+    for (const meme of catalog.memes) {
       const card = document.createElement('article'); card.className = 'meme-item';
       const image = document.createElement('img'); image.src = meme.image; image.alt = meme.name; image.loading = 'lazy';
       const info = document.createElement('div'); const name = document.createElement('b'); name.textContent = meme.name;
@@ -40,7 +40,7 @@ export function initLibrary({ onOpen, onClose, onMemeAdded }) {
       listen.addEventListener('click', () => { stopPreview(); playing = new Audio(meme.audio); playing.volume = .65;
         playing.play().catch(() => message('Звук не загрузился. Попробуй ещё раз.', true)); });
       info.append(name, small, listen); card.append(image, info);
-      if (catalog.canManage) {
+      if (catalog.canManage && meme.custom) {
         const remove = document.createElement('button'); remove.className = 'remove-meme'; remove.textContent = '×';
         remove.setAttribute('aria-label', `Удалить мем «${meme.name}»`);
         remove.addEventListener('click', () => { deleting = meme.id; $('delete-description').textContent = `«${meme.name}» исчезнет из общей коллекции на всех устройствах.`; $('delete-dialog').showModal(); });

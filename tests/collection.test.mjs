@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import worker from '../worker/index.js';
 import { newGame, answer, nextRound } from '../client/game.js';
 import { joystickVector } from '../client/joystick.js';
-import { TOTAL_ROUNDS } from '../client/data.js';
+import { TOTAL_ROUNDS, MEMES } from '../client/data.js';
 
 class MemoryBucket {
   objects = new Map();
@@ -27,7 +27,7 @@ async function upload(env, name = 'Мой мем', identity = admin, picture) {
 test('Public visitors can play but cannot upload, change settings, or delete memes', async () => {
   const env = { BUCKET: new MemoryBucket(), MEME_ADMIN_EMAIL: admin };
   const publicCatalog = await (await call(env, '/api/memes', {}, null)).json();
-  assert.equal(publicCatalog.canManage, false); assert.equal(publicCatalog.memes.length, 6);
+  assert.equal(publicCatalog.canManage, false); assert.equal(publicCatalog.memes.length, MEMES.length);
   assert.equal((await upload(env, 'Чужой', null)).status, 403);
   assert.equal((await upload(env, 'Чужой', 'other@example.test')).status, 403);
   assert.equal((await call(env, '/api/settings', { method: 'PUT', body: '{}' }, null)).status, 403);
@@ -39,7 +39,7 @@ test('Owner uploads persist for other clients, media is served, and custom-only 
   const ids = [];
   for (let i = 0; i < 3; i++) { const response = await upload(env, `Мем ${i}`); assert.equal(response.status, 201); ids.push((await response.json()).meme.id); }
   const catalog = await (await call(env, '/api/memes', {}, null)).json();
-  assert.equal(catalog.custom.length, 3); assert.equal(catalog.memes.length, 9);
+  assert.equal(catalog.custom.length, 3); assert.equal(catalog.memes.length, MEMES.length + 3);
   const media = await call(env, catalog.custom[0].image, {}, null);
   assert.equal(media.status, 200); assert.equal(media.headers.get('content-type'), 'image/jpeg'); assert.ok((await media.arrayBuffer()).byteLength > 1000);
   assert.equal((await call(env, '/api/settings', { method: 'PUT', body: JSON.stringify({ includeBuiltins: false }) })).status, 200);
@@ -50,7 +50,7 @@ test('Owner uploads persist for other clients, media is served, and custom-only 
   assert.equal(state.status, 'finished');
   assert.equal((await call(env, `/api/memes/${ids[0]}`, { method: 'DELETE' })).status, 200);
   const after = await (await call(env, '/api/memes', {}, null)).json();
-  assert.equal(after.includeBuiltins, true); assert.equal(after.memes.length, 8);
+  assert.equal(after.includeBuiltins, true); assert.equal(after.memes.length, MEMES.length + 2);
   assert.equal((await call(env, `/media/${ids[0]}/audio`, {}, null)).status, 404);
 });
 test('Invalid uploads and cross-origin writes do not leave orphaned files', async () => {

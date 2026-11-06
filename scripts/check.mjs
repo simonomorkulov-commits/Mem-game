@@ -10,4 +10,4 @@ for (const meme of MEMES) {
   if ((await readFile(new URL('../client/' + meme.audio, import.meta.url))).length < 1000) throw Error('Invalid audio: ' + meme.id);
 }
 await access(new URL('../client/vendor/three.module.js', import.meta.url));
-console.log('JavaScript and all 12 meme assets: OK');
+console.log(`JavaScript and all ${MEMES.length * 2} meme assets: OK`);

@@ -69,7 +69,7 @@ test('Legacy owners keep their nickname, records and author access without givin
   await env.DB.prepare('UPDATE players SET best_score = 777').run();
   const retained = await payload(call(env, '/api/auth/retain', 'POST', {}, null, owner)); assert.equal(retained.status, 200);
   const restored = await me(env, retained.data.token); assert.equal(restored.data.profile.nickname, 'АвторМемов'); assert.equal(restored.data.profile.bestScore, 777); assert.equal(restored.data.canManage, true);
-  const draft = { title: 'Комната автора', targetId: 'bruh', optionIds: ['bruh', 'among-us', 'metal-pipe'], position: 1, theme: 'mint' };
+  const draft = { title: 'Комната автора', targetId: 'jai-shchenok', optionIds: ['jai-shchenok', 'jai-shapka', 'jai-poklon'], position: 1, theme: 'mint' };
   assert.equal((await call(env, '/api/levels', 'POST', draft, retained.data.token)).status, 201);
   const attacker = await payload(call(env, '/api/auth/guest', 'POST', { nickname: 'ПростоИгрок', isAdmin: true, is_admin: 1, player_id: 'owner' }));
   assert.equal(attacker.status, 200); assert.equal((await me(env, attacker.data.token)).data.canManage, false);

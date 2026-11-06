@@ -17,7 +17,25 @@ async function gameBody(request) {
 function gameShuffle(items) { const result = [...items]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; }
 
 async function gameSeed(db, memes) {
-  if (await db.prepare("SELECT value FROM game_config WHERE key = 'seeded'").first()) return;
+  if (await db.prepare("SELECT value FROM game_config WHERE key = 'seeded'").first()) {
+    // Upgrade existing starter rooms once; deleted rooms and author-created rooms stay intact.
+    if (!await db.prepare("SELECT value FROM game_config WHERE key = 'jai-pack-v1'").first()) {
+      const oldIds = new Set(['bruh', 'vine-boom', 'among-us', 'metal-pipe', 'anime-wow', 'spongebob']);
+      const available = memes.filter(m => m.id.startsWith('jai-'));
+      if (available.length < 3) return;
+      const rows = (await db.prepare("SELECT * FROM game_levels WHERE id LIKE 'starter-%'").all()).results, changes = [];
+      for (const row of rows) {
+        if (![row.target_id, row.option_a, row.option_b, row.option_c].every(id => oldIds.has(id))) continue;
+        const index = Number(row.id.slice(8)) - 1; if (!Number.isInteger(index) || index < 0) continue;
+        const target = available[index % available.length], others = available.filter(m => m.id !== target.id);
+        const a = others[Math.floor(index / available.length) % others.length], b = others[(Math.floor(index / available.length) + 1) % others.length];
+        changes.push(db.prepare("UPDATE game_levels SET target_id = ?, option_a = ?, option_b = ?, option_c = ? WHERE id = ? AND target_id = ? AND option_a = ? AND option_b = ? AND option_c = ? AND NOT EXISTS (SELECT 1 FROM game_config WHERE key = 'jai-pack-v1')").bind(target.id, target.id, a.id, b.id, row.id, row.target_id, row.option_a, row.option_b, row.option_c));
+      }
+      changes.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('jai-pack-v1', '1')"));
+      await db.batch(changes);
+    }
+    return;
+  }
   if (memes.length < 3) gameFail('Для игры нужны хотя бы три мема.');
   const themes = Object.keys(ROOM_THEMES), statements = [];
   for (let i = 0; i < DEFAULT_LEVEL_COUNT; i++) {
@@ -30,6 +48,7 @@ async function gameSeed(db, memes) {
       .bind(`starter-${String(i + 1).padStart(3, '0')}`, i + 1, `Комната ${i + 1}`, target.id, target.id, a.id, b.id, themes[Math.floor(i / 5) % themes.length], new Date().toISOString()));
   }
   statements.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('seeded', '1')"));
+  statements.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('jai-pack-v1', '1')"));
   await db.batch(statements);
 }
 async function gameLevels(env, services, manage = false) {
@@ -95,7 +114,11 @@ async function gameStart(request, env, services, user) {
   if (user && !profile) gameFail('Сначала выбери ник в профиле.', 428);
   if (profile) {
     const active = await env.DB.prepare("SELECT * FROM game_runs WHERE player_id = ? AND status = 'active' AND expires_at > ? ORDER BY started_at DESC LIMIT 1").bind(user, Date.now()).first();
-    if (active) return gameJSON(gameCurrent(active));
+    if (active) {
+      const legacy = new Set(['bruh', 'vine-boom', 'among-us', 'metal-pipe', 'anime-wow', 'spongebob']);
+      if (JSON.parse(active.snapshot).some(level => legacy.has(level.target.id))) await gameFinish(env, active);
+      else return gameJSON(gameCurrent(active));
+    }
   }
   const levels = await gameLevels(env, services); if (!levels.length) gameFail('Пока нет готовых уровней. Автор может создать их в редакторе.');
   const snapshot = levels.map(level => ({ id: level.id, title: level.title, theme: level.theme, target: level.target, options: gameShuffle(level.options) }));

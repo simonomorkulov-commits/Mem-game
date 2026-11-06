@@ -1,5 +1,7 @@
 # Ресурсы проекта
 
+- **Текущая подборка «Жай Жардам»** — четыре фрагмента из предоставленного пользователем видео «“ЖАЙ ЖАРДАМ”🚑ЖАКЫНДА🎬#кыргызмем #кино.mp4»: 5,467–7,967; 12,667–15,400; 17,667–23,433; 39,900–конец ролика. В каждой паре картинка и звук относятся к одной сцене. Сцены с микрофоном исключены. Ресурсы находятся в `client/assets/jai/`; исходные границы и предпросмотр подготовлены отдельно. Прежние шесть мемов больше не входят в подборку новых партий.
+
 - **Three.js r170** — [официальный репозиторий](https://github.com/mrdoob/three.js/tree/r170), лицензия MIT. Полный текст сохранён в `client/vendor/THREE-LICENSE.txt`.
 - **Звуки мемов** — локальные MP3 из [IDE-Error-Soundboard, каталог sounds](https://github.com/PareekshithPalat/IDE-Error-Soundboard/tree/main/sounds): `bruh.mp3`, `vine-boom.mp3`, `among-us-role.mp3`, `metal-pipe-clang.mp3`, `anime-wow.mp3`, `spongebob-fail.mp3`. [Скрипт источника](https://github.com/PareekshithPalat/IDE-Error-Soundboard/blob/main/scripts/download_sounds.js) содержит ссылки на исходные загрузки Myinstants. Лицензия кода стороннего репозитория не считается лицензией на записи мемов.
 - **Картинка Спанч Боба** — [шаблон Mocking Spongebob на Imgflip](https://imgflip.com/memetemplate/102156234/Mocking-Spongebob), изображение `https://i.imgflip.com/1otk96.jpg`. Персонаж SpongeBob SquarePants принадлежит Nickelodeon / Paramount.
