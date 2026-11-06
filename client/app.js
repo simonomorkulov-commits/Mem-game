@@ -8,6 +8,7 @@ import { initLevelEditor } from './level-editor.js';
 import { initMultiplayer as initDuels } from './multiplayer.js';
 import { initOnlinePresence } from './online-presence.js';
 import { initBannerUI } from './banner.js';
+import { initFullscreen } from './fullscreen.js';
 
 const $ = id => document.getElementById(id);
 const onlinePresence = initOnlinePresence();
@@ -309,12 +310,7 @@ for (const [id, name] of [['right-joystick', 'rightJoystick'], ['power-saving', 
 }
 for (const id of ['home-help', 'pause-help']) $(id).addEventListener('click', () => $('rules-button').click());
 $('vibration-setting').hidden = typeof navigator.vibrate !== 'function';
-$('fullscreen-button').hidden = !document.fullscreenEnabled || !document.documentElement.requestFullscreen;
-$('fullscreen-button').addEventListener('click', async () => {
-  try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
-  catch { /* Viewport layout remains usable if the browser declines fullscreen. */ }
-});
-document.addEventListener('fullscreenchange', () => { $('fullscreen-button').textContent = document.fullscreenElement ? 'Выйти из полного экрана' : 'Открыть на весь экран'; });
+initFullscreen();
 syncSettings(); applyVolume();
 function syncVisualViewport() { document.documentElement.style.setProperty('--visual-height', Math.round(window.visualViewport?.height || innerHeight) + 'px'); }
 syncVisualViewport();

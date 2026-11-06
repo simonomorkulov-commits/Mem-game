@@ -5,13 +5,16 @@ export function initBannerUI() {
   function render(data) {
     $('banner-admin').hidden = !data.canManage;
     const banner = data.banner, slot = $('sponsor-banner');
-    slot.hidden = !banner;
+    slot.hidden = data.enabled === false;
+    $('banner-enabled').checked = data.enabled !== false;
+    $('sponsor-placeholder').hidden = !!banner;
+    $('sponsor-image').hidden = !banner;
     if (banner) {
       $('sponsor-image').src = banner.image; $('sponsor-image').alt = banner.title;
       slot.setAttribute('aria-label', banner.title + (banner.link ? ' — открыть сайт рекламодателя' : ''));
       if (banner.link) slot.href = banner.link; else slot.removeAttribute('href');
       $('banner-current').src = banner.image;
-    } else { slot.removeAttribute('href'); $('sponsor-image').removeAttribute('src'); }
+    } else { slot.removeAttribute('href'); slot.setAttribute('aria-label', 'Здесь может быть ваша реклама'); $('sponsor-image').removeAttribute('src'); }
     $('banner-current').hidden = !banner; $('banner-remove').hidden = !banner;
     if (!busy) { $('banner-title').value = banner?.title || ''; $('banner-link').value = banner?.link || ''; }
   }
@@ -21,7 +24,15 @@ export function initBannerUI() {
     catch { $('banner-status').textContent = 'Не удалось загрузить баннер. Попробуй ещё раз.'; }
   }
   function message(text, error = false) { $('banner-status').textContent = text; $('banner-status').classList.toggle('is-error', error); }
-  function lock(value) { busy = value; $('banner-save').disabled = $('banner-remove').disabled = value; }
+  function lock(value) { busy = value; $('banner-save').disabled = $('banner-remove').disabled = $('banner-enabled').disabled = value; }
+  $('banner-enabled').addEventListener('change', async () => {
+    const enabled = $('banner-enabled').checked; if (busy) return; lock(true);
+    try {
+      const data = await requestAPI('/api/banner', { method: 'PATCH', body: JSON.stringify({ enabled }) });
+      lock(false); render(data); message(enabled ? 'Рекламный баннер включён для всех игроков.' : 'Рекламный баннер выключен для всех игроков.');
+    } catch (error) { $('banner-enabled').checked = !enabled; message(error.message, true); }
+    finally { lock(false); }
+  });
   $('banner-file').addEventListener('change', () => {
     const file = $('banner-file').files[0]; if (!file) return;
     if (file.size > 2 * 1024 * 1024) { $('banner-file').value = ''; message('Картинка должна быть меньше 2 МБ.', true); return; }
@@ -43,7 +54,7 @@ export function initBannerUI() {
   });
   $('banner-remove').addEventListener('click', async () => {
     if (busy) return; lock(true);
-    try { const data = await requestAPI('/api/banner', { method: 'DELETE' }); lock(false); render(data); message('Баннер убран.'); }
+    try { const data = await requestAPI('/api/banner', { method: 'DELETE' }); lock(false); render(data); message(data.enabled ? 'Своя картинка удалена. Показывается баннер по умолчанию.' : 'Своя картинка удалена. Показ рекламы выключен.'); }
     catch (error) { message(error.message, true); }
     finally { lock(false); }
   });

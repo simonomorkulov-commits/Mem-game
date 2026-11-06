@@ -2,14 +2,24 @@ export async function handleBannerApi(request, env, { canManage, boundedBody, im
   if (!env.BUCKET) fail('Баннер пока недоступен.', 503);
   const current = await env.BUCKET.get('banner/current.json');
   const previous = current ? await current.json() : null;
-  if (request.method === 'GET') return json({ banner: previous, canManage: canManage(request, env) });
+  const configObject = await env.BUCKET.get('banner/settings.json');
+  const config = configObject ? await configObject.json() : { enabled: true };
+  const enabled = config.enabled !== false;
+  if (request.method === 'GET') return json({ banner: previous, enabled, canManage: canManage(request, env) });
   if (!canManage(request, env)) fail('Изменять баннер может только автор игры.', 403);
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin) fail('Открой игру на её сайте.', 403);
+  if (request.method === 'PATCH') {
+    const bytes = await boundedBody(request); if (bytes.length > 256) fail('Слишком большой запрос.', 413);
+    let next; try { next = JSON.parse(new TextDecoder().decode(bytes)); } catch { fail('Не удалось прочитать настройки.'); }
+    if (typeof next.enabled !== 'boolean') fail('Укажи, показывать ли баннер.');
+    await env.BUCKET.put('banner/settings.json', JSON.stringify({ enabled: next.enabled }), { httpMetadata: { contentType: 'application/json' } });
+    return json({ banner: previous, enabled: next.enabled, canManage: true });
+  }
   if (request.method === 'DELETE') {
     await env.BUCKET.delete('banner/current.json');
     if (previous?.id) await env.BUCKET.delete('banners/' + previous.id);
-    return json({ banner: null, canManage: true });
+    return json({ banner: null, enabled, canManage: true });
   }
   if (request.method !== 'POST') fail('Метод не поддерживается.', 405);
   const bytes = await boundedBody(request);
@@ -28,5 +38,5 @@ export async function handleBannerApi(request, env, { canManage, boundedBody, im
     await env.BUCKET.put('banner/current.json', JSON.stringify(banner), { httpMetadata: { contentType: 'application/json' } });
   } catch (error) { await env.BUCKET.delete('banners/' + id).catch(() => {}); throw error; }
   if (previous?.id) await env.BUCKET.delete('banners/' + previous.id).catch(() => {});
-  return json({ banner, canManage: true }, 201);
+  return json({ banner, enabled, canManage: true }, 201);
 }

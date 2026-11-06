@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import worker from '../worker/index.js';
+import { LocalDB } from '../scripts/local-db.mjs';
 class BannerBucket {
   objects = new Map();
   async put(key, value, options = {}) { this.objects.set(key, { bytes: typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value), metadata: options.httpMetadata }); }
@@ -19,7 +20,7 @@ async function form(link = 'https://example.com', bytes) {
   data.set('image', new Blob([bytes || await readFile(new URL('../client/assets/rock.jpg', import.meta.url))], { type: 'image/jpeg' }), 'banner.jpg'); return data;
 }
 test('Only the owner can publish a shared banner; public readers receive the image, title and link', async () => {
-  const env = setup(); assert.deepEqual(await (await call(env)).json(), { banner: null, canManage: false });
+  const env = setup(); assert.deepEqual(await (await call(env)).json(), { banner: null, enabled: true, canManage: false });
   assert.equal((await call(env, 'POST', await form())).status, 403);
   assert.equal((await call(env, 'DELETE', undefined, 'other@example.test')).status, 403);
   const added = await call(env, 'POST', await form(), owner); assert.equal(added.status, 201);
@@ -27,6 +28,19 @@ test('Only the owner can publish a shared banner; public readers receive the ima
   assert.equal((await (await call(env)).json()).banner.link, 'https://example.com');
   const image = await call(env, 'GET', undefined, undefined, undefined, banner.image); assert.equal(image.status, 200); assert.equal(image.headers.get('content-type'), 'image/jpeg');
   assert.equal((await call(env, 'HEAD', undefined, undefined, undefined, banner.image)).status, 200);
+});
+
+test('Only the owner can toggle advertising; disabled state survives upload, deletion and later reads', async () => {
+  const env = setup(), settings = value => JSON.stringify({ enabled: value });
+  assert.equal((await call(env, 'PATCH', settings(false))).status, 403);
+  assert.equal((await call(env, 'PATCH', settings(false), 'other@example.test')).status, 403);
+  assert.equal((await call(env, 'PATCH', settings(false), owner, 'https://elsewhere.test')).status, 403);
+  assert.equal((await call(env, 'PATCH', settings('false'), owner)).status, 400);
+  const disabled = await call(env, 'PATCH', settings(false), owner); assert.equal(disabled.status, 200); assert.equal((await disabled.json()).enabled, false);
+  assert.equal((await (await call(env, 'POST', await form(), owner)).json()).enabled, false);
+  assert.equal((await (await call(env, 'DELETE', undefined, owner)).json()).enabled, false);
+  assert.deepEqual(await (await call(env)).json(), { banner: null, enabled: false, canManage: false });
+  await call(env, 'PATCH', settings(true), owner); assert.deepEqual(await (await call(env)).json(), { banner: null, enabled: true, canManage: false });
 });
 test('Replacing or removing a banner removes the old asset without changing memes', async () => {
   const env = setup();
@@ -44,4 +58,20 @@ test('Unsafe links, HTML images, oversized uploads and cross-origin writes canno
   assert.equal((await call(env, 'POST', await form('', new Uint8Array(2 * 1024 * 1024 + 1)), owner)).status, 400);
   assert.equal((await call(env, 'POST', await form(), owner, 'https://elsewhere.test')).status, 403);
   assert.equal(env.BUCKET.objects.size, 0);
+});
+
+test('Saved owner token can change advertising; a normal nickname and forged admin fields cannot', async () => {
+  const env = { ...setup(), DB: new LocalDB() };
+  async function api(path, method, data, headers = {}) {
+    return worker.fetch(new Request('https://game.test' + path, { method, headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(data) }), env);
+  }
+  try {
+    const ownerHeaders = { 'oai-authenticated-user-id': 'real-owner', 'oai-authenticated-user-email': owner };
+    assert.equal((await api('/api/profile', 'PUT', { nickname: 'Автор' }, ownerHeaders)).status, 200);
+    const retained = await api('/api/auth/retain', 'POST', {}, ownerHeaders), ownerToken = (await retained.json()).token;
+    assert.equal((await api('/api/banner', 'PATCH', { enabled: false }, { 'X-Player-Token': ownerToken })).status, 200);
+    const guestResponse = await api('/api/auth/guest', 'POST', { nickname: 'Игрок', isAdmin: true }), guestToken = (await guestResponse.json()).token;
+    assert.equal((await api('/api/banner', 'PATCH', { enabled: true, isAdmin: true, canManage: true }, { 'X-Player-Token': guestToken })).status, 403);
+    assert.equal((await (await call(env)).json()).enabled, false);
+  } finally { env.DB.close(); }
 });
