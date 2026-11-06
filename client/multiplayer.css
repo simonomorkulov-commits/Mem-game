@@ -71,12 +71,12 @@
   .online-entry-buttons { gap: 8px; margin-top: 8px; }
   .online-entry-buttons .button { min-height: 46px; padding: 0 8px; font-size: 12px; border-radius: 12px; }
   .group-hud { top: env(safe-area-inset-top); padding: 3px 12px 12px; }
-  .group-hud-line { min-height: 40px; }
+  .group-hud-line { min-height: 34px; font-size: 12px; }
   .group-scores { gap: 6px; }
-  .group-score { padding: 6px; }
-  .group-score span { font-size: 10px; }
-  .group-score b { font-size: 20px; }
-  .duel-mode .sound-prompt { top: calc(110px + env(safe-area-inset-top)); min-height: 36px; padding: 2px 4px 2px 10px; }
+  .group-score { padding: 5px; }
+  .group-score span { font-size: 9px; }
+  .group-score b { font-size: 18px; }
+  .duel-mode .sound-prompt { top: calc(102px + env(safe-area-inset-top)); min-height: 36px; padding: 2px 4px 2px 10px; }
   .duel-mode .sound-prompt button { min-height: 30px; padding: 4px 10px; }
   .duel-stage { padding: calc(115px + env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom)); }
   .duel-stage-card { padding: 22px 18px; }

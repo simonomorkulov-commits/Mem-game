@@ -48,18 +48,18 @@
   .home-tools { width: 100%; justify-content: space-between; gap: 8px; }
   .home-tools button { min-height: 48px; flex: 1; text-align: center; font-size: 13px; color: #c1b3d0; }
   body.in-game .game-frame { height: 100dvh; }
-  .hud { height: 70px; top: env(safe-area-inset-top); padding: 0 14px; }
-  .hud-room > span { font-size: 9px; }
-  .hud-room b { font-size: 25px; }
-  .hud-room small { font-size: 12px; }
+  .hud { height: 54px; top: env(safe-area-inset-top); padding: 0 10px; }
+  .hud-room > span { display: none; }
+  .hud-room b { font-size: 22px; }
+  .hud-room small { font-size: 11px; }
   .hud-progress { display: none; }
-  .hud-right { gap: 13px; }
-  .lives svg { width: 15px; height: 15px; }
-  .score { font-size: 16px; min-width: 42px; }
-  .hud .icon-button { width: 48px; height: 48px; }
-  .sound-prompt { top: calc(78px + env(safe-area-inset-top)); min-height: 48px; max-width: calc(100% - 28px); padding: 4px 5px 4px 13px; font-size: 12px; gap: 9px; }
-  #sound-status { overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
-  .sound-prompt button { min-height: 42px; font-size: 12px; padding: 8px 12px; }
+  .hud-right { gap: 10px; }
+  .lives svg { width: 13px; height: 13px; }
+  .score { font-size: 14px; min-width: 36px; }
+  .hud .icon-button { width: 44px; height: 44px; }
+  .sound-prompt { top: calc(56px + env(safe-area-inset-top)); min-height: 40px; max-width: calc(100% - 24px); padding: 2px 4px 2px 10px; font-size: 10px; gap: 6px; }
+  #sound-status { overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  .sound-prompt button { min-height: 36px; font-size: 11px; padding: 4px 10px; }
   .sound-prompt button svg { width: 16px; height: 16px; }
   .sound-prompt kbd { display: none; }
   .movement-tip { display: none; }
@@ -146,7 +146,7 @@
   body:not(.in-game) .intro, .below-game { display: none; }
   .start-area { width: 260px; left: auto; right: max(20px, env(safe-area-inset-right)); bottom: 20px; }
   .menu-overlay { background: linear-gradient(270deg, #181521f5, #181521c4 28%, transparent 65%); }
-  .hud { height: 64px; }
+  .hud { height: 52px; }
   .sound-prompt { top: calc(10px + env(safe-area-inset-top)); max-width: calc(100% - 320px); }
   #sound-status { max-width: 145px; }
   .joystick { width: 112px; height: 112px; }

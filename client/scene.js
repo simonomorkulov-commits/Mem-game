@@ -7,7 +7,8 @@ import { ROOM_THEMES } from './scoring.js';
 
 export async function createWorld(canvas, onPortal, onWalk, characterId = 'azamat') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+  const sharpPixelRatio = () => Math.min(devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 2.5 : 2);
+  renderer.setPixelRatio(sharpPixelRatio());
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -66,7 +67,8 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
       const source = texture.image, aspect = meme.contentAspect;
       const sw = Math.min(900, 1020 * aspect), sh = sw / aspect, sx = (900 - sw) / 2, sy = (1110 - sh) / 2;
       const canvas = document.createElement('canvas'); canvas.width = 900; canvas.height = 1250;
-      const ctx = canvas.getContext('2d'), fill = Math.max(900 / sw, 1250 / sh), fit = Math.min(900 / sw, 1250 / sh);
+      const ctx = canvas.getContext('2d'), fill = Math.max(900 / sw, 1250 / sh), fit = Math.min(900 / sw, 1250 / sh) * 1.08;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
       ctx.fillStyle = '#171322'; ctx.fillRect(0, 0, 900, 1250);
       ctx.filter = 'blur(28px) brightness(0.4)'; ctx.drawImage(source, sx, sy, sw, sh, (900 - sw * fill) / 2, (1250 - sh * fill) / 2, sw * fill, sh * fill);
       ctx.filter = 'none'; ctx.drawImage(source, sx, sy, sw, sh, (900 - sw * fit) / 2, (1250 - sh * fit) / 2, sw * fit, sh * fit);
@@ -75,7 +77,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     const aspect = texture.image.width / texture.image.height;
-    const frameAspect = 3.18 / 4.42;
+    const frameAspect = 3.52 / 4.85;
     if (aspect > frameAspect) { texture.repeat.x = frameAspect / aspect; texture.offset.x = (1 - texture.repeat.x) / 2; }
     else { texture.repeat.y = aspect / frameAspect; texture.offset.y = (1 - texture.repeat.y) / 2; }
       textures.set(meme.id, texture);
@@ -91,8 +93,8 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     const group = new THREE.Group(); group.position.set(x, 0, -5.55); scene.add(group);
     const frameMat = new THREE.MeshStandardMaterial({ color: '#bda4ff', emissive: '#9164ff', emissiveIntensity: .65, roughness: .35 });
     box(3.62, 5.05, .26, ink, 0, 2.9, 0, group);
-    const image = new THREE.Mesh(new THREE.PlaneGeometry(3.18, 4.42), new THREE.MeshBasicMaterial({ map: textures.get(MEMES[index].id) }));
-    image.position.set(0, 2.94, .15); image.userData.portal = index; group.add(image);
+    const image = new THREE.Mesh(new THREE.PlaneGeometry(3.52, 4.85), new THREE.MeshBasicMaterial({ map: textures.get(MEMES[index].id), fog: false, toneMapped: false }));
+    image.position.set(0, 2.9, .15); image.userData.portal = index; group.add(image);
     const touchTarget = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 5.05), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     touchTarget.position.set(0, 2.9, .2); touchTarget.userData.portal = index; group.add(touchTarget);
     portalMeshes.push(touchTarget);
@@ -164,7 +166,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     const { width, height } = canvas.getBoundingClientRect();
     if (!width || !height) return;
     renderer.setSize(width, height, false); camera.aspect = width / height;
-    if (camera.aspect < 1.2) { camera.position.set(0, 17.5, 22); camera.fov = 49; }
+    if (camera.aspect < 1.2) { camera.position.set(0, 13.5, 22); camera.fov = 51; }
     else { camera.position.set(0, 11.5, 16.8); camera.fov = 43; }
     camera.lookAt(0, 1, -1.4); camera.updateProjectionMatrix();
     if (!document.hidden) renderer.render(scene, camera);
@@ -220,7 +222,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     setPowerSaving(value) {
       if (powerSaving === value) return;
       powerSaving = value; renderer.shadowMap.enabled = !value; dust.visible = !value;
-      renderer.setPixelRatio(Math.min(devicePixelRatio, value ? 1 : matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+      renderer.setPixelRatio(value ? Math.min(devicePixelRatio || 1, 1) : sharpPixelRatio());
     },
     setCharacter(id) {
       if (rig.id === id) return;
