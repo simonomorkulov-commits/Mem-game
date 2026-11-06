@@ -1,3 +1,4 @@
+import { raceAdvance, raceView, raceAnswer, raceFinishedMembers } from './race-api.js';
 const GROUP_COUNTDOWN_MS = 3500, GROUP_ROUND_MS = 45000, GROUP_REVEAL_MS = 4000;
 const groupJSON = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 function groupFail(message, status = 400) { throw Object.assign(new Error(message), { status }); }
@@ -41,7 +42,8 @@ async function groupAdvance(env, room) {
   const now = Date.now();
   if (room.expires_at <= now) return groupEnd(env, room, 'expired', [], true);
   let members = await groupMembers(env, room.id);
-  const absent = groupActive(members).filter(m => m.seen_at < now - 90000);
+  const finished = room.mode === 'race' ? raceFinishedMembers(room, members, await groupAnswers(env, room.id)) : new Set();
+  const absent = groupActive(members).filter(m => m.seen_at < now - 90000 && !finished.has(m.player_id));
   if (absent.length) {
     const statements = absent.flatMap(m => [
       room.status === 'lobby' ? env.DB.prepare('DELETE FROM match_members WHERE room_id = ? AND player_id = ?').bind(room.id, m.player_id)
@@ -73,6 +75,7 @@ async function groupAdvance(env, room) {
       room = await groupRow(env, room.id);
     }
   }
+  if (room.mode === 'race') return raceAdvance(env, room, { members: groupMembers, answers: groupAnswers, end: groupEnd });
   if (room.phase === 'playing') {
     const answers = (await groupAnswers(env, room.id)).filter(a => a.round_index === room.round_index);
     if (joined.every(m => answers.some(a => a.player_id === m.player_id)) || now >= room.ends_at) {
@@ -95,6 +98,7 @@ async function groupAdvance(env, room) {
   return room;
 }
 async function groupView(env, room, user) {
+  if (room.mode === 'race') return raceView(env, room, user, { members: groupMembers, answers: groupAnswers, fail: groupFail });
   const members = await groupMembers(env, room.id), own = members.find(m => m.player_id === user);
   if (!own) groupFail('Ты не участник этой комнаты.', 403);
   const snapshot = JSON.parse(room.snapshot), level = snapshot[room.round_index], answers = await groupAnswers(env, room.id);
@@ -131,7 +135,7 @@ async function groupCreate(env, services, user, body) {
   const salt = password ? crypto.randomUUID() : null, hash = password ? await groupPassword(password, salt) : null;
   const data = await groupSnapshot(services, body.pack), id = crypto.randomUUID(), now = Date.now();
   try { await env.DB.batch([
-    env.DB.prepare('INSERT INTO match_rooms (id, host_id, title, pack, snapshot, password_hash, password_salt, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(id, user, title, data.pack, data.snapshot, hash, salt, now, now + 1200000),
+    env.DB.prepare("INSERT INTO match_rooms (id, host_id, title, pack, snapshot, password_hash, password_salt, created_at, expires_at, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'race')").bind(id, user, title, data.pack, data.snapshot, hash, salt, now, now + 1200000),
     env.DB.prepare('INSERT INTO match_members (room_id, player_id, slot, joined_at, seen_at) VALUES (?, ?, 0, ?, ?)').bind(id, user, now, now),
     env.DB.prepare('INSERT INTO match_seats (player_id, room_id) VALUES (?, ?)').bind(user, id)
   ]); }
@@ -175,6 +179,7 @@ async function groupStart(env, room, user) {
   return groupAdvance(env, await groupRow(env, room.id));
 }
 async function groupAnswer(env, room, user, body) {
+  if (room.mode === 'race') return raceAnswer(env, room, user, body, { members: groupMembers, answers: groupAnswers, advance: groupAdvance, fail: groupFail });
   if (typeof body.requestId !== 'string' || body.requestId.length < 10 || body.requestId.length > 80) groupFail('Неверный запрос ответа.');
   const prior = await env.DB.prepare('SELECT request_id FROM match_answers WHERE room_id = ? AND round_index = ? AND player_id = ?').bind(room.id, Number(body.round) - 1, user).first();
   if (prior?.request_id === body.requestId) return groupAdvance(env, room);
@@ -201,7 +206,7 @@ async function groupRematch(env, room, services, user) {
   const levels = await services.levels(), count = Math.ceil(levels.length / 5), data = await groupSnapshot(services, (room.pack + 1) % Math.max(1, count));
   const id = crypto.randomUUID(), now = Date.now();
   try { await env.DB.batch([
-    env.DB.prepare('INSERT INTO match_rooms (id, host_id, title, pack, snapshot, password_hash, password_salt, parent_id, created_at, expires_at) SELECT ?, ?, title, ?, ?, password_hash, password_salt, id, ?, ? FROM match_rooms WHERE id = ? AND rematch_id IS NULL').bind(id, user, data.pack, data.snapshot, now, now + 1200000, room.id),
+    env.DB.prepare("INSERT INTO match_rooms (id, host_id, title, pack, snapshot, password_hash, password_salt, parent_id, created_at, expires_at, mode) SELECT ?, ?, title, ?, ?, password_hash, password_salt, id, ?, ?, 'race' FROM match_rooms WHERE id = ? AND rematch_id IS NULL").bind(id, user, data.pack, data.snapshot, now, now + 1200000, room.id),
     env.DB.prepare('INSERT INTO match_members (room_id, player_id, slot, joined_at, seen_at) SELECT ?, player_id, slot, ?, ? FROM match_members WHERE room_id = ? AND EXISTS (SELECT 1 FROM match_rooms WHERE id = ?)').bind(id, now, now, room.id, id),
     env.DB.prepare('INSERT INTO match_seats (player_id, room_id) SELECT player_id, room_id FROM match_members WHERE room_id = ?').bind(id),
     env.DB.prepare('UPDATE match_rooms SET rematch_id = ? WHERE id = ? AND rematch_id IS NULL AND EXISTS (SELECT 1 FROM match_rooms WHERE id = ?)').bind(id, room.id, id)

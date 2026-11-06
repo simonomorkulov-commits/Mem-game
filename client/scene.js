@@ -57,6 +57,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
   }
   const loader = new THREE.TextureLoader();
   const textures = new Map();
+  let pinnedTextures = new Set();
   async function loadTextures(memes) {
     await Promise.all(memes.filter(meme => !textures.has(meme.id)).map(async meme => {
     const texture = await loader.loadAsync(meme.image);
@@ -70,7 +71,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     }));
     for (const [id, texture] of textures) {
       if (textures.size <= 12) break;
-      if (!memes.some(m => m.id === id)) { texture.dispose(); textures.delete(id); }
+      if (!pinnedTextures.has(id) && !memes.some(m => m.id === id)) { texture.dispose(); textures.delete(id); }
     }
   }
   await loadTextures(MEMES.slice(0, 3));
@@ -214,6 +215,11 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
       if (rig.id === id) return;
       character.remove(rig.root); disposeCharacter(rig.root);
       rig = createCharacter(id); character.add(rig.root);
+    },
+    async preloadRounds(rounds) {
+      const memes = [...new Map(rounds.flatMap(round => round.options).map(meme => [meme.id, meme])).values()];
+      pinnedTextures = new Set(memes.map(meme => meme.id));
+      await loadTextures(memes);
     },
     async setRound(round) {
       await loadTextures(round.options);

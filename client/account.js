@@ -20,7 +20,7 @@ export async function answerRun(run, index) {
     optionId: run.challenge.options[index].id, revision: run.revision, requestId: crypto.randomUUID() }) }, run.token);
   return { ...data, token: run.token };
 }
-export async function currentRun(run) { return { ...await requestAPI('/api/runs/' + run.runId, {}, run.token), token: run.token }; }
+export async function currentRun(run) { return { ...(run.next || await requestAPI('/api/runs/' + run.runId, {}, run.token)), token: run.token }; }
 export const finishRun = run => requestAPI(`/api/runs/${run.runId}/finish`, { method: 'POST', body: '{}' }, run.token);
 
 export function initAccountUI(options) { return createProfileUI({ ...options, api: requestAPI }); }

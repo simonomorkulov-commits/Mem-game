@@ -43,6 +43,16 @@
 .group-score span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #cebddb; }
 .group-score b { display: block; color: #d8baff; font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 3px; }
 .group-score.is-you b { color: var(--lime); }
+.group-score span { line-height: 1.2; }
+.group-score b { line-height: 1.1; margin-top: 2px; }
+.group-score small { display: block; color: #c2accf; font-size: 9px; line-height: 1.1; white-space: nowrap; margin-top: 2px; }
+.group-score.is-leading { border-color: #b9ff66; background: #34512755; }
+.race-progress { display: block; height: 3px; margin-top: 4px; border-radius: 4px; background: linear-gradient(to right, var(--lime) var(--progress), #70538666 var(--progress)); }
+.race-rules { border: 1px solid #77618d; border-radius: 12px; padding: 13px; background: #30233c; }
+.race-rules b { color: var(--lime); }
+.race-feedback { position: absolute; left: 50%; bottom: max(156px, calc(env(safe-area-inset-bottom) + 140px)); transform: translateX(-50%); z-index: 6; max-width: calc(100% - 28px); width: max-content; padding: 9px 15px; border: 1px solid #b9ff6680; border-radius: 12px; background: #22351fe8; color: #d4ffb0; font-size: 12px; font-weight: 700; text-align: center; pointer-events: none; }
+.race-feedback.wrong { color: #ffc9db; background: #402136e8; border-color: #ef8fb280; }
+.duel-mode .sound-prompt { top: 119px; }
 .duel-stage { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 120px 18px 30px; pointer-events: none; background: #11101950; }
 .duel-stage-card { width: min(450px, 100%); max-height: 100%; overflow-y: auto; text-align: center; padding: 24px; border: 1px solid #8a70a5; border-radius: 19px; background: #20192ff0; backdrop-filter: blur(7px); }
 .duel-stage-card h2 { font-size: 31px; margin: 15px 0 12px; line-height: 1.1; }
@@ -78,7 +88,12 @@
   .group-hud-line .icon-button { height: 34px; }
   .group-score { padding: 4px 7px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .group-score b { font-size: 18px; margin: 0; }
-  .duel-mode .sound-prompt { top: calc(77px + env(safe-area-inset-top)); max-width: 240px; }
+  .group-score { position: relative; padding-bottom: 10px; }
+  .group-score small { display: none; }
+  .race-progress { position: absolute; left: 7px; right: 7px; bottom: 2px; }
+  .duel-mode .sound-prompt { left: max(12px, env(safe-area-inset-left)); top: calc(88px + env(safe-area-inset-top)); transform: none; width: max-content; max-width: 155px; }
+  .duel-mode .sound-prompt #sound-status { display: none; }
+  .duel-mode .race-feedback { bottom: max(12px, env(safe-area-inset-bottom)); font-size: 11px; padding: 5px 10px; }
   .duel-stage { padding: 80px 12px 12px; }
   .duel-stage-card { padding: 15px 18px; max-width: 470px; }
   .duel-stage-card h2 { font-size: 23px; margin: 9px 0; }

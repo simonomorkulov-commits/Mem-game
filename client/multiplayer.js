@@ -1,10 +1,10 @@
 import { requestAPI } from './account.js';
 
 const $ = id => document.getElementById(id);
-export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, prepare, activate, stop, play, reveal }) {
+export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, preload, prepare, activate, stop, play, reveal }) {
   let room = null, active = false, opened = false, allowed = false, busy = false, mode = 'find';
   let pollTimer, listTimer, clockTimer, generation = 0, offset = 0, lost = false, localReady = false;
-  let prepared = '', preparing = '', played = '', revealed = '', pending = null, selectedRoom = null;
+  let prepared = '', preparing = '', played = '', revealed = '', preloaded = '', feedbackTimer, pending = null, selectedRoom = null;
   const query = new URLSearchParams(location.search);
   let invitation = /^[a-f0-9-]{36}$/.test(query.get('room') || '') ? query.get('room') : null;
   const key = () => room ? room.id + ':' + room.round : '';
@@ -44,19 +44,27 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
   function scores() {
     if (!room) return;
     const list = $('online-scores'); list.replaceChildren(); list.style.gridTemplateColumns = `repeat(${room.players.length}, 1fr)`;
+    const leader = [...room.players].filter(p => p.active).sort((a, b) => b.score - a.score || (b.completed || 0) - (a.completed || 0))[0];
     for (const player of room.players) {
-      const item = document.createElement('div'); item.className = 'group-score' + (player.isYou ? ' is-you' : '') + (!player.active ? ' left' : '');
+      const item = document.createElement('div'); item.className = 'group-score' + (player.isYou ? ' is-you' : '') + (!player.active ? ' left' : '') + (room.mode === 'race' && leader === player && (player.score > 0 || player.completed > 0) ? ' is-leading' : '');
       const name = document.createElement('span'), value = document.createElement('b'); name.textContent = player.nickname; name.title = player.nickname;
-      value.textContent = player.score; item.append(name, value); list.append(item);
+      value.textContent = player.score; item.append(name, value);
+      if (room.mode === 'race') {
+        const progress = document.createElement('small'), bar = document.createElement('i');
+        progress.textContent = player.finished ? 'Финиш 🏁' : `${player.completed} / ${room.total} комнат`; bar.className = 'race-progress'; bar.style.setProperty('--progress', `${player.completed / room.total * 100}%`);
+        item.append(progress, bar);
+      }
+      list.append(item);
     }
   }
   function setRoom(data) {
     if (room?.id === data.id && data.serverTime < room.serverTime) return;
+    if (room?.id === data.id && room.mode === 'race' && (data.you.completed < room.you.completed || (room.status === 'finished' && data.status !== 'finished'))) return;
     const changed = room?.id !== data.id; room = data; offset = data.serverTime - Date.now(); lost = false;
-    if (changed) { prepared = preparing = played = revealed = ''; pending = null; localReady = false; }
+    if (changed) { prepared = preparing = played = revealed = preloaded = ''; pending = null; localReady = false; clearTimeout(feedbackTimer); $('race-feedback').hidden = true; }
     lobby(); scores();
     if (!active && room.status === 'playing' && localReady && prepared === key()) enterView();
-    if (active) { render(); autoPrepare(); }
+    if (active) { if (room.mode === 'race') raceFeedback(); render(); autoPrepare(); }
     else if (room.status === 'cancelled') { room = null; pane('find'); notice('Комната закрыта. Выбери другую игру.'); refreshRooms(); }
   }
   async function action(callback, onError) {
@@ -146,6 +154,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
       if (!room) return;
       if (room.status === 'lobby' && room.you.ready) { localReady = false; setRoom(await post(path('ready'), { round: room.round, ready: false })); return; }
       await unlockAudio(); const expected = key(); stop();
+      if (room.mode === 'race' && preloaded !== room.id) { notice('Загружаем трассу перед стартом…'); await preload(room.track); preloaded = room.id; }
       if (room.challenge && prepared !== expected) { await prepare(room.challenge); prepared = expected; }
       localReady = true;
       if (room.phase === 'preparing') setRoom(await post(path('ready'), { round: room.round })); else setRoom(await requestAPI(path()));
@@ -153,14 +162,17 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
     });
   }
   async function autoPrepare() {
-    if (!active || !room?.you.active || room.status !== 'playing' || room.phase !== 'preparing') return;
-    const expected = key(); if (preparing === expected || room.you.ready) return;
+    if (!active || !room?.you.active || room.status !== 'playing' || room.you.finished || (room.phase !== 'preparing' && room.mode !== 'race')) return;
+    const expected = key(), version = generation, challenge = room.challenge; if (preparing || prepared === expected || (room.mode !== 'race' && room.you.ready)) return;
     preparing = expected; stop();
     try {
-      if (prepared !== expected) { await prepare(room.challenge); prepared = expected; }
-      if (active && key() === expected && room.phase === 'preparing') setRoom(await post(path('ready'), { round: room.round }));
+      await prepare(challenge);
+      if (!active || generation !== version || key() !== expected) return;
+      prepared = expected;
+      if (room.mode === 'race') render();
+      else if (room.phase === 'preparing') setRoom(await post(path('ready'), { round: room.round }));
     } catch (error) { lost = true; notice(error.message, true); stage('Не удалось загрузить уровень', error.message); }
-    finally { if (preparing === expected) preparing = ''; }
+    finally { if (preparing === expected) { preparing = ''; if (active && key() !== expected) autoPrepare(); } }
   }
   function isPlayable() {
     const now = Date.now() + offset;
@@ -171,6 +183,14 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
     $('duel-stage').hidden = false; $('duel-stage-title').textContent = title; $('duel-stage-text').textContent = text;
     $('duel-stage-count').textContent = count; $('duel-result-actions').hidden = !finished;
   }
+  function raceTime(ms) { const tenths = Math.max(0, Math.round(ms / 100)); return `${Math.floor(tenths / 600)}:${(tenths % 600 / 10).toFixed(1).padStart(4, '0')}`; }
+  function raceFeedback() {
+    if (!room.result || revealed === room.id + ':' + room.result.round) return;
+    revealed = room.id + ':' + room.result.round;
+    const result = room.result, toast = $('race-feedback');
+    toast.textContent = result.timedOut ? 'Время вышло · следующая комната' : result.correct ? `Верно! +${result.gained} · скорость +${result.speedBonus}` : 'Не тот портал · следующая комната';
+    toast.classList.toggle('wrong', !result.correct); toast.hidden = false; reveal(result); clearTimeout(feedbackTimer); feedbackTimer = setTimeout(() => { toast.hidden = true; }, 1800);
+  }
   function render() {
     if (!active || !room) return;
     activate(isPlayable()); $('duel-round').textContent = `${room.round} / ${room.total}`;
@@ -180,32 +200,34 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
       stop(); $('duel-clock').textContent = 'Итог';
       const ended = room.status === 'finished', outcome = room.you.outcome;
       const title = room.status === 'cancelled' ? 'Матч отменён' : !ended ? 'Ты вышел из матча' : outcome === 'win' ? 'Победа!' : outcome === 'draw' ? 'Ничья на первом месте' : 'Матч завершён';
-      const rows = [...room.players].sort((a, b) => Number(b.active) - Number(a.active) || b.score - a.score).map(p => `${p.nickname}: ${p.score}${p.active ? '' : ' · вышел'}`).join('\n');
+      const rows = [...room.players].sort((a, b) => Number(b.active) - Number(a.active) || b.score - a.score || (a.elapsedMs || 0) - (b.elapsedMs || 0)).map(p => `${p.nickname}: ${p.score}${room.mode === 'race' ? ` · ${p.correct}/${room.total} · ${raceTime(p.elapsedMs)}` : ''}${p.active ? '' : ' · вышел'}`).join('\n');
       stage(title, rows, ended ? room.you.score + ' очков' : '', true);
       $('duel-rematch').hidden = !ended; $('duel-rematch').textContent = room.rematchId ? 'Присоединиться к реваншу' : 'Реванш';
-      $('duel-record-note').textContent = ended ? 'Результат учтён в рейтинге онлайн.' : room.status === 'cancelled' ? 'Отмена не влияет на рейтинг.' : 'Остальные продолжают игру. Результат сохранится после завершения матча.';
+      $('duel-record-note').textContent = ended ? room.mode === 'race' ? '100 за верный мем + до 50 за скорость. При равных очках побеждает тот, кто раньше финишировал. Результат сохранён в рейтинге.' : 'Результат учтён в рейтинге онлайн.' : room.status === 'cancelled' ? 'Отмена не влияет на рейтинг.' : 'Остальные продолжают игру. Результат сохранится после завершения матча.';
       return;
     }
     if (room.phase === 'preparing') { $('duel-clock').textContent = 'Загрузка'; stage('Готовимся к старту', room.you.ready ? 'Ты готов. Ждём загрузки у остальных…' : 'Загружаем картинки и звук…'); return; }
+    if (room.mode === 'race' && room.you.finished) { stop(); $('duel-clock').textContent = 'Финиш · ' + raceTime(room.you.elapsedMs); stage('Ты на финише!', 'Соперники ещё проходят трассу. Следи за их комнатами и очками сверху.', room.you.score + ' очков'); return; }
     if (room.phase === 'reveal') {
       $('duel-clock').textContent = 'Ответы'; if (revealed !== key() && room.result) { revealed = key(); reveal(room.result); }
       stage(room.result?.timedOut ? 'Время вышло' : room.result?.correct ? 'Верно! +100' : 'Не тот портал', `Это ${room.result?.meme.name || 'мем'}. Дальше через ${Math.max(1, Math.ceil((room.nextAt - now) / 1000))}…`); return;
     }
     if (now < room.startsAt) { $('duel-clock').textContent = 'Общий старт'; stage('Слушай и выбирай', 'Звук включится после отсчёта.', Math.max(1, Math.ceil((room.startsAt - now) / 1000))); return; }
-    $('duel-clock').textContent = Math.max(0, Math.ceil((room.endsAt - now) / 1000)) + ' сек';
-    if (room.you.answered || pending) { stage('Ответ принят', `Ждём ответы: ${room.players.filter(p => p.active && p.answered).length} / ${room.count}. Правильный мем откроется всем одновременно.`); return; }
+    $('duel-clock').textContent = (room.mode === 'race' ? '+' + Math.max(0, Math.round(50 * (1 - Math.max(0, now - room.startsAt) / 20000))) + ' скорость · ' : '') + Math.max(0, Math.ceil((room.endsAt - now) / 1000)) + ' сек';
+    if (room.you.answered || pending) { stage(room.mode === 'race' ? 'В следующий портал…' : 'Ответ принят', room.mode === 'race' ? 'Сохраняем ответ и открываем комнату.' : `Ждём ответы: ${room.players.filter(p => p.active && p.answered).length} / ${room.count}. Правильный мем откроется всем одновременно.`); return; }
     if (now >= room.endsAt) { stage('Время вышло', 'Получаем результаты…'); return; }
     if (prepared !== key()) { stage('Загружаем уровень', 'Подключаемся к матчу…'); return; }
     $('duel-stage').hidden = true; if (played !== key() && isPlayable()) { played = key(); play(); }
   }
   async function answer(index) {
     if (!isPlayable()) return; stop(); pending = { round: room.round, optionId: room.challenge.options[index].id, requestId: crypto.randomUUID() }; render();
-    try { const data = await post(path('answer'), pending); pending = null; setRoom(data); }
+    const version = generation, id = room.id;
+    try { const data = await post(path('answer'), pending); if (generation !== version || room?.id !== id) return; pending = null; setRoom(data); }
     catch (error) { if (error.status === 409) { pending = null; await poll(); } else { lost = true; notice(error.message, true); render(); } }
     schedulePoll(20);
   }
   function leaveView(clear = true) {
-    active = false; localReady = false; pending = null; generation++; clearTimeout(pollTimer); clearTimeout(listTimer); clearInterval(clockTimer); clockTimer = null;
+    active = false; localReady = false; pending = null; generation++; clearTimeout(pollTimer); clearTimeout(listTimer); clearTimeout(feedbackTimer); $('race-feedback').hidden = true; clearInterval(clockTimer); clockTimer = null;
     stop(); $('duel-hud').hidden = $('duel-stage').hidden = true; exit(); if (clear) room = null;
   }
   function askLeave() { if (active) { stop(); $('duel-leave-dialog').showModal(); } }

@@ -18,7 +18,7 @@ let audioContext, master, compressor, source, soundTimer;
 let preferences = readPreferences();
 let volume = preferences.volume, muted = preferences.muted, joystickControls;
 let accountUI, levelEditor, duelUI;
-let nextRoomTimer, advancing = false;
+let nextRoomTimer, roomFeedbackTimer, advancing = false;
 const buffers = new Map();
 
 function announce(message) { $('announcer').textContent = message; }
@@ -32,7 +32,7 @@ function pauseForDialog() {
 function resumeIfUncovered() {
   if (duelUI?.active) duelUI.refresh();
   else if (!document.querySelector('dialog[open]')) {
-    if (state?.status === 'result') scheduleNextRoom(400);
+    if (state?.status === 'result') scheduleNextRoom(0);
     else if (paused) resume();
   }
 }
@@ -156,7 +156,7 @@ async function enterPortal(index) {
   catch (error) { showError(error.message); return; }
   $('loading-overlay').hidden = true;
   world.reveal(state.result.correctIndex, index); updateHud();
-  $('play-overlay').hidden = true; $('feedback-overlay').hidden = false;
+  $('play-overlay').hidden = true; $('feedback-overlay').hidden = !state.finished;
   const { correct, gained, meme } = state.result;
   haptic(correct ? 25 : [20, 45, 20]);
   $('feedback-icon').className = 'feedback-icon' + (correct ? '' : ' wrong');
@@ -167,8 +167,12 @@ async function enterPortal(index) {
   $('feedback-points').innerHTML = correct ? `+${gained}<small>${gained > 100 ? `100 за мем + ${gained - 100} за серию` : 'ОЧКОВ В ТВОЮ КОПИЛКУ'}</small>` : `<span style="color:var(--pink)">−1 жизнь</span><small>Осталось: ${state.lives}</small>`;
   $('next-button').hidden = true;
   playFeedback(correct);
+  if (!state.finished) {
+    const toast = $('race-feedback'); toast.textContent = correct ? `Верно! +${gained}` : 'Не тот портал · −1 жизнь'; toast.classList.toggle('wrong', !correct); toast.hidden = false;
+    clearTimeout(roomFeedbackTimer); roomFeedbackTimer = setTimeout(() => { toast.hidden = true; }, 1400);
+  }
   announce(`${correct ? 'Верно' : 'Ошибка'}. ${meme.name}. Очки: ${state.score}. Жизни: ${state.lives}.`);
-  scheduleNextRoom(correct ? 1200 : 2100);
+  scheduleNextRoom(0);
 }
 function showFinish() {
   clearTimeout(nextRoomTimer); $('next-button').hidden = false;
@@ -214,6 +218,7 @@ function resume() {
   paused = false; world.setActive(true); playMeme(); $('scene').focus({ preventScroll: true });
 }
 async function home() {
+  clearTimeout(roomFeedbackTimer); $('race-feedback').hidden = true;
   clearTimeout(nextRoomTimer);
   const previous = state; state = null;
   stopControls();
@@ -329,7 +334,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     clearTimeout(nextRoomTimer);
     if (!document.querySelector('dialog[open]')) { if (duelUI?.active) duelUI.suspend(); else pause(); }
-  } else if (state?.status === 'result') scheduleNextRoom(400);
+  } else if (state?.status === 'result') scheduleNextRoom(0);
 });
 
 try {
@@ -345,10 +350,14 @@ try {
       $('loading-overlay').hidden = true; $('scene').focus({ preventScroll: true });
     },
     exit() {
+      world.preloadRounds([]);
       document.body.classList.remove('in-game', 'duel-mode');
       $('menu-overlay').hidden = $('room-label').hidden = false;
       $('hud').hidden = $('feedback-overlay').hidden = $('play-overlay').hidden = $('loading-overlay').hidden = true;
       $('start-button').focus({ preventScroll: true });
+    },
+    async preload(track) {
+      await Promise.all([world.preloadRounds(track), loadAudio(track.map(challenge => challenge.target))]);
     },
     async prepare(challenge) {
       stopControls(); world.setActive(false); stopAudio();

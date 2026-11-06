@@ -117,7 +117,8 @@ async function gameAnswer(request, env, run, user) {
   const result = { runId: run.id, status: 'result', revision: run.revision + 1, round: nextIndex, total: snapshot.length,
     score: points.score, lives: points.lives, streak: points.streak, correct: points.correct, ranked: !!run.player_id, finished,
     challenge: { title: challenge.title, theme: challenge.theme, options: challenge.options },
-    result: { correct, selected, gained: points.gained, correctIndex: challenge.options.findIndex(m => m.id === challenge.target.id), meme: challenge.target } };
+    result: { correct, selected, gained: points.gained, correctIndex: challenge.options.findIndex(m => m.id === challenge.target.id), meme: challenge.target },
+    next: gameCurrent({ ...run, ...points, round_index: nextIndex, revision: run.revision + 1, status: finished ? 'finished' : 'active' }) };
   const statements = [env.DB.prepare("UPDATE game_runs SET round_index = ?, revision = revision + 1, score = ?, streak = ?, correct = ?, lives = ?, status = ?, last_request_id = ?, last_result = ? WHERE id = ? AND revision = ? AND status = 'active'")
     .bind(nextIndex, points.score, points.streak, points.correct, points.lives, finished ? 'finished' : 'active', body.requestId, JSON.stringify(result), run.id, run.revision)];
   if (run.player_id) statements.push(env.DB.prepare('UPDATE players SET furthest_room = MAX(furthest_room, ?) WHERE id = ?').bind(nextIndex, run.player_id));
