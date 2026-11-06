@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="./phone.css">
   <link rel="stylesheet" href="./community.css">
   <link rel="stylesheet" href="./multiplayer.css">
+  <link rel="stylesheet" href="./banner.css">
 </head>
 <body>
   <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -57,10 +58,11 @@
         </div>
         <div id="duel-hud" class="group-hud" hidden><div class="group-hud-line"><b id="duel-round">1 / 5</b><span id="duel-clock">Подготовка</span><button id="online-exit" class="icon-button" aria-label="Выйти из матча">×</button></div><div id="online-scores" class="group-scores"></div></div>
         <div id="race-feedback" class="race-feedback" role="status" aria-live="polite" hidden></div>
+        <a id="sponsor-banner" class="sponsor-banner" target="_blank" rel="noopener noreferrer sponsored" hidden><img id="sponsor-image" alt="Реклама"><small>Реклама</small></a>
         <div id="duel-stage" class="duel-stage" hidden><div class="duel-stage-card"><span class="eyebrow" id="duel-stage-kicker">МЕМНАЯ ГОНКА</span><h2 id="duel-stage-title">Ждём соперника</h2><p id="duel-stage-text"></p><div id="duel-stage-count"></div><div id="duel-result-actions" hidden><button id="duel-rematch" class="button primary">Реванш</button><button id="duel-finish-home" class="button secondary">В главное меню</button><p class="community-note" id="duel-record-note"></p></div></div></div>
         <div class="menu-overlay" id="menu-overlay">
           <div class="scene-title"><span class="tiny-tag">ВКЛЮЧИ ЗВУК</span><h2>Твой слух.<br>Твой <em>мемный</em><br>выход.</h2><p>Проведи персонажа в картинку,<br>которая подходит к звуку.</p></div>
-          <div class="start-area"><button id="character-button" class="character-button"><img id="selected-character-portrait" alt=""><span><small>ТВОЙ ГЕРОЙ</small><b id="selected-character-name">Парень</b></span><span class="change-character">Сменить ›</span></button><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><div class="online-entry-buttons"><button class="button secondary" id="find-games-button">⚔ Найти игры</button><button class="button secondary" id="create-room-button">Создать комнату</button></div><p class="online-population" data-online-state="loading" title="Игроки с ником в поиске, комнатах и онлайн-гонках">Сейчас онлайн: <b data-online-count>—</b></p><span class="start-caption"><span id="level-total">30</span> уровней <i>·</i> 3 жизни <i>·</i> общий рейтинг</span></div>
+          <div class="start-area"><button id="character-button" class="character-button"><img id="selected-character-portrait" alt=""><span><small>ТВОЙ ГЕРОЙ</small><b id="selected-character-name">Парень</b></span><span class="change-character">Сменить ›</span></button><button class="button primary" id="start-button"><svg><use href="#i-play"/></svg><span>Погнали играть</span><svg><use href="#i-arrow"/></svg></button><div class="online-entry-buttons"><button class="button secondary" id="find-games-button">⚔ Найти игры</button><button class="button secondary" id="create-room-button">Создать комнату</button></div><p class="online-population" data-online-state="loading" title="Посетители с открытой игрой: меню, соло и онлайн. Обновление каждые 10 секунд.">Сейчас онлайн: <b data-online-count>—</b></p><span class="start-caption"><span id="level-total">30</span> уровней <i>·</i> 3 жизни <i>·</i> общий рейтинг</span></div>
           <div class="floating-note">наушники —<br>хорошая идея <span>♪</span></div>
         </div>
         <div class="play-overlay" id="play-overlay" hidden>
@@ -83,7 +85,7 @@
   </div>
   <dialog id="online-dialog" class="community-dialog online-dialog">
     <div class="community-heading"><div><span class="eyebrow">ИГРАЙТЕ ВДВОЁМ, ВТРОЁМ ИЛИ ВЧЕТВЕРОМ</span><h2 id="online-heading">Найти игры</h2></div><button id="online-close" class="icon-button" aria-label="Закрыть">×</button></div>
-    <p class="online-population" data-online-state="loading" title="Игроки с ником в поиске, комнатах и онлайн-гонках">Сейчас онлайн: <b data-online-count>—</b></p>
+    <p class="online-population" data-online-state="loading" title="Посетители с открытой игрой: меню, соло и онлайн. Обновление каждые 10 секунд.">Сейчас онлайн: <b data-online-count>—</b></p>
     <p id="online-status" class="community-status" role="status">Выбери комнату и присоединяйся.</p>
     <div id="online-auth" hidden><p>Выбери ник один раз — он сохранится для следующих игр.</p><button id="online-profile" class="button primary">Выбрать ник</button></div>
     <section id="online-find" hidden><div class="online-section-heading"><h3>Комнаты · до 4 игроков</h3><button id="online-refresh" class="text-button">Обновить</button></div><p id="online-list-status" class="community-note" role="status"></p><div id="online-rooms" class="online-room-list"></div><button id="online-to-create" class="button secondary">Создать свою комнату</button><details class="online-ranking-section"><summary>Рейтинг онлайн</summary><p id="online-ranking-status" class="community-note"></p><ol id="online-ranking" class="ranking-list"></ol><button id="online-ranking-refresh" class="text-button">Обновить рейтинг</button></details></section>
@@ -119,6 +121,19 @@
     <p id="library-status" class="library-status" role="status" aria-live="polite"></p>
     <div id="library-guest" hidden><p>Играть могут все. Добавлять мемы может только автор игры.</p><a href="/signin-with-chatgpt?return_to=%2F%3Fcollection%3D1" target="_top" class="button primary">Войти как автор</a></div>
     <div id="library-admin" hidden>
+      <details id="banner-admin" class="banner-admin" hidden>
+        <summary>Рекламный баннер на игровом поле</summary>
+        <p class="community-note">Загрузи свой баннер — он появится у всех игроков в соло и гонках. На телефоне — внизу рядом с джойстиком. Подходит картинка 640 × 220 px с крупным текстом. Картинка показывается целиком.</p>
+        <img id="banner-current" class="banner-current" alt="Предпросмотр баннера" hidden>
+        <form id="banner-form">
+          <label class="field-label" for="banner-file">Картинка баннера<input id="banner-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required></label>
+          <label class="field-label" for="banner-title">Название рекламодателя<input id="banner-title" maxlength="80" placeholder="Например, название кафе"></label>
+          <label class="field-label" for="banner-link">Ссылка по нажатию · необязательно<input id="banner-link" type="url" maxlength="2048" placeholder="https://example.com"></label>
+          <button id="banner-save" class="button primary" type="submit">Разместить баннер</button>
+        </form>
+        <button id="banner-remove" class="text-button" type="button" hidden>Убрать баннер из игры</button>
+        <p id="banner-status" class="community-note" role="status"></p>
+      </details>
       <button id="level-builder-button" class="button secondary">Редактор уровней</button>
       <button id="new-meme-level" class="button secondary" hidden>Создать уровень с новым мемом</button>
       <form id="upload-form" class="upload-form">

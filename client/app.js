@@ -6,8 +6,12 @@ import { readPreferences, savePreferences } from './preferences.js';
 import { initAccountUI, startRun, answerRun, currentRun, finishRun } from './account.js';
 import { initLevelEditor } from './level-editor.js';
 import { initMultiplayer as initDuels } from './multiplayer.js';
+import { initOnlinePresence } from './online-presence.js';
+import { initBannerUI } from './banner.js';
 
 const $ = id => document.getElementById(id);
+const onlinePresence = initOnlinePresence();
+const bannerUI = initBannerUI();
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const storageKey = 'igra-memov:record:v1';
 let best = 0;
@@ -265,7 +269,7 @@ document.querySelectorAll('[data-volume]').forEach(input => input.addEventListen
 }));
 joystickControls = bindJoystick($('joystick'), $('joystick-thumb'), (x, z) => world?.setJoystick(x, z));
 initLibrary({
-  onOpen: pauseForDialog,
+  onOpen() { pauseForDialog(); bannerUI.refresh(); },
   onClose() { resumeIfUncovered(); accountUI?.refreshLevels().catch(() => {}); },
   onMemeAdded(meme) { levelEditor?.noteNewMeme(meme); }
 });
@@ -276,7 +280,7 @@ function updateLevelCount(data) {
 }
 accountUI = initAccountUI({
   onOpen: pauseForDialog, onClose: resumeIfUncovered, onLevels: updateLevelCount,
-  onProfile(me) { if (me.profile) { best = me.profile.bestScore; $('best-score').textContent = best; } }
+  onProfile(me) { onlinePresence.refresh(); bannerUI.refresh(); if (me.profile) { best = me.profile.bestScore; $('best-score').textContent = best; } }
 });
 levelEditor = initLevelEditor({ onOpen: pauseForDialog, onClose: resumeIfUncovered, onChange: updateLevelCount });
 Promise.allSettled([accountUI.refresh(), accountUI.refreshLevels()]);

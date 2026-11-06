@@ -16,7 +16,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 const server = http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
-    if (pathname.startsWith('/api/') || pathname.startsWith('/media/')) {
+    if (pathname.startsWith('/api/') || pathname.startsWith('/media/') || pathname.startsWith('/banner-media/')) {
       const chunks = []; let size = 0;
       for await (const chunk of req) { size += chunk.length; if (size > 13 * 1024 * 1024) { res.writeHead(413); res.end(); return; } chunks.push(chunk); }
       const headers = new Headers(req.headers);

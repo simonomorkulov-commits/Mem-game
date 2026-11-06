@@ -1,6 +1,7 @@
 import { MEMES as BUILTIN_MEMES } from '../client/data.js';
 import { handleGameApi } from './game-api.js';
 import { resolvePlayerIdentity } from './account-api.js';
+import { handleBannerApi } from './banner-api.js';
 
 const ASSETS = {}; // Replaced by scripts/build.mjs for the single-file Worker.
 const MAX_BODY = 13 * 1024 * 1024;
@@ -83,6 +84,7 @@ export default {
       const url = new URL(request.url), pathname = url.pathname;
       if (pathname.startsWith('/api/')) {
         if (env.DB) env = { ...env, PLAYER_AUTH: await resolvePlayerIdentity(request, env) };
+        if (pathname === '/api/banner') return await handleBannerApi(request, env, { canManage, boundedBody, imageType, fail, json });
         if (/^\/api\/(me|profile|leaderboard|levels|runs|duels|matches|auth)(\/|$)/.test(pathname)) {
           return await handleGameApi(request, env, { canManage, catalog: async () => {
             if (!env.BUCKET) fail('Коллекция пока недоступна.', 503);
@@ -123,6 +125,12 @@ export default {
           return json({ saved: true });
         }
         return json({ error: 'Не найдено.' }, 404);
+      }
+      const bannerMedia = pathname.match(/^\/banner-media\/([a-f0-9-]{36})$/);
+      if (bannerMedia && ['GET', 'HEAD'].includes(request.method)) {
+        const object = await env.BUCKET?.get('banners/' + bannerMedia[1]);
+        if (!object) return new Response('Not found', { status: 404 });
+        return new Response(request.method === 'HEAD' ? null : object.body, { headers: { 'Content-Type': object.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' } });
       }
       const media = pathname.match(/^\/media\/([^/]+)\/(image|audio)$/);
       if (media) {
