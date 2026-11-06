@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../worker/index.js';
 import { LocalDB } from '../scripts/local-db.mjs';
+import { MEMES } from '../client/data.js';
 
 class Bucket {
   values = new Map();
@@ -39,7 +40,7 @@ test('Thirty starter rooms are seeded once and the owner can author, reorder and
   const initial = (await payload(await call(env, '/api/levels'))).data; assert.equal(initial.total, 30);
   assert.equal('targetId' in initial.levels[0], false);
   const rows = (await env.DB.prepare('SELECT target_id, option_a, option_b, option_c FROM game_levels').all()).results;
-  assert.equal(new Set(rows.map(r => r.target_id + ':' + [r.option_a, r.option_b, r.option_c].sort().join(','))).size, 12);
+  assert.equal(new Set(rows.map(r => r.target_id + ':' + [r.option_a, r.option_b, r.option_c].sort().join(','))).size, Math.min(30, MEMES.length * (MEMES.length - 1) * (MEMES.length - 2) / 2));
   const draft = { title: 'Мой мемный уровень', position: 2, targetId: 'jai-shapka', optionIds: ['jai-shchenok', 'jai-shapka', 'jai-poklon'], theme: 'mint' };
   assert.equal((await call(env, '/api/levels', 'POST', draft, visitor)).status, 403);
   assert.equal((await call(env, '/api/levels', 'POST', draft, owner)).status, 201);
@@ -125,7 +126,7 @@ test('The Jai pack upgrades existing starter rooms once without restoring deleti
   assert.ok(await env.DB.prepare("SELECT value FROM game_config WHERE key = 'jai-pack-v1'").first()); env.DB.close();
 });
 
-test('Starting after the pack replacement saves an old run and opens a new run with only the four selected memes', async () => {
+test('Starting after the pack replacement saves an old run and opens a new run with the selected video memes', async () => {
   const env = setup(); await register(env, owner, 'НоваяПодборка');
   const first = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
   const row = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(first.runId).first(), snapshot = JSON.parse(row.snapshot);
@@ -134,4 +135,22 @@ test('Starting after the pack replacement saves an old run and opens a new run w
   assert.notEqual(first.runId, second.runId); assert.equal(second.total, 30); assert.ok(second.challenge.target.id.startsWith('jai-'));
   assert.equal((await payload(await call(env, '/api/me', 'GET', undefined, owner))).data.profile.bestScore, 123);
   assert.equal((await env.DB.prepare('SELECT status FROM game_runs WHERE id = ?').bind(first.runId).first()).status, 'finished'); env.DB.close();
+});
+
+test('All five part-two memes are available to the author and playable in authored campaign rooms and a race pack', async () => {
+  const env = setup(); await register(env, owner, 'ВтораяПодборка');
+  const catalog = (await payload(await call(env, '/api/memes'))).data;
+  assert.equal(catalog.memes.length, 9);
+  const added = catalog.memes.filter(m => m.id.startsWith('part2-')); assert.equal(added.length, 5);
+  await call(env, '/api/levels');
+  for (let i = 0; i < added.length; i++) {
+    const ids = [added[i].id, 'jai-shchenok', 'jai-shapka'];
+    assert.equal((await call(env, '/api/levels', 'POST', { title: added[i].name, position: i + 1, targetId: added[i].id, optionIds: ids, theme: 'mint' }, owner)).status, 201);
+  }
+  const run = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  assert.equal(run.challenge.target.id, added[0].id); assert.equal(run.total, 35);
+  const race = (await payload(await call(env, '/api/matches', 'POST', { pack: 0 }, owner))).data;
+  assert.deepEqual(race.track.map(level => level.target.id), added.map(m => m.id));
+  for (const level of race.track) assert.ok(level.target.audio.includes('/assets/part2/'));
+  env.DB.close();
 });
