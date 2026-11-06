@@ -132,7 +132,7 @@ test('Starting after the pack replacement saves an old run and opens a new run w
   const row = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(first.runId).first(), snapshot = JSON.parse(row.snapshot);
   snapshot[0].target.id = 'bruh'; await env.DB.prepare('UPDATE game_runs SET snapshot = ?, score = 123 WHERE id = ?').bind(JSON.stringify(snapshot), first.runId).run();
   const second = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
-  assert.notEqual(first.runId, second.runId); assert.equal(second.total, 30); assert.ok(second.challenge.target.id.startsWith('part2-'));
+  assert.notEqual(first.runId, second.runId); assert.equal(second.total, 30); assert.ok(MEMES.some(m => m.id === second.challenge.target.id));
   assert.equal((await payload(await call(env, '/api/me', 'GET', undefined, owner))).data.profile.bestScore, 123);
   assert.equal((await env.DB.prepare('SELECT status FROM game_runs WHERE id = ?').bind(first.runId).first()).status, 'finished'); env.DB.close();
 });
@@ -164,22 +164,23 @@ async function fourMemeStarterFixture(env) {
   }
 }
 
-test('The existing four-meme campaign is upgraded to nine playable sounds, starting with all five new memes in campaign and race', async () => {
+test('The existing campaign uses all nine sounds and disjoint picture sets; a race receives its own fair shared plan', async () => {
   const env = setup(); await register(env, owner, 'ВсеДевять'); await fourMemeStarterFixture(env);
   await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
   let run = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
-  assert.equal(run.total, 30); const targets = [];
+  assert.equal(run.total, 30); const targets = []; let previous = [];
   for (let i = 0; i < 9; i++) {
     targets.push(run.challenge.target.id);
     assert.equal(new Set(run.challenge.options.map(m => m.id)).size, 3);
     assert.ok(run.challenge.options.some(m => m.id === run.challenge.target.id));
+    assert.ok(run.challenge.options.every(m => !previous.includes(m.id))); previous = run.challenge.options.map(m => m.id);
     const reply = await payload(await call(env, `/api/runs/${run.runId}/answer`, 'POST', { revision: run.revision, requestId: crypto.randomUUID(), optionId: run.challenge.target.id }, owner));
     assert.equal(reply.status, 200); run = reply.data.next;
   }
-  assert.deepEqual(targets.slice(0, 5), MEMES.filter(m => m.id.startsWith('part2-')).map(m => m.id));
   assert.deepEqual([...targets].sort(), MEMES.map(m => m.id).sort());
   const race = (await payload(await call(env, '/api/matches', 'POST', { pack: 0 }, owner))).data;
-  assert.deepEqual(race.track.map(level => level.target.id), targets.slice(0, 5));
+  assert.equal(new Set(race.track.map(level => level.target.id)).size, 5);
+  for (let i = 1; i < race.track.length; i++) assert.ok(race.track[i].options.every(m => !race.track[i - 1].options.some(p => p.id === m.id)));
   assert.equal((await payload(await call(env, '/api/levels'))).data.total, 30); env.DB.close();
 });
 
@@ -201,8 +202,33 @@ test('Resuming a four-meme run saves its score once and starts a nine-meme run i
   await env.DB.prepare('UPDATE game_runs SET score = 275 WHERE id = ?').bind(old.runId).run();
   await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
   const fresh = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
-  assert.notEqual(fresh.runId, old.runId); assert.ok(fresh.challenge.target.id.startsWith('part2-'));
+  assert.notEqual(fresh.runId, old.runId); assert.ok(MEMES.some(m => m.id === fresh.challenge.target.id));
   const repeated = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data; assert.equal(repeated.runId, fresh.runId);
   const profile = (await payload(await call(env, '/api/me', 'GET', undefined, owner))).data.profile;
   assert.equal(profile.bestScore, 275); assert.equal(profile.gamesPlayed, 1); env.DB.close();
+});
+
+test('Adding memes later automatically expands the next default game while a started game keeps its saved plan', async () => {
+  const env = setup(); await register(env, owner, 'БольшеМемов');
+  const first = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  const added = ['new-one', 'new-two', 'new-three'];
+  for (const id of added) await env.BUCKET.put('records/' + id + '.json', JSON.stringify({ id, name: id, image: '/new/' + id + '.jpg', audio: '/new/' + id + '.mp3', custom: true, createdAt: new Date().toISOString() }));
+  assert.equal((await payload(await call(env, '/api/runs', 'POST', {}, owner))).data.runId, first.runId);
+  await call(env, `/api/runs/${first.runId}/finish`, 'POST', {}, owner);
+  const next = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  const stored = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(next.runId).first();
+  const snapshot = JSON.parse(stored.snapshot), targets = snapshot.slice(0, 12).map(l => l.target.id);
+  assert.equal(new Set(targets).size, 12); assert.ok(added.every(id => targets.includes(id)));
+  for (let i = 1; i < snapshot.length; i++) assert.ok(snapshot[i].options.every(m => !snapshot[i - 1].options.some(p => p.id === m.id)));
+  env.DB.close();
+});
+
+test('A saved predictable nine-meme run is replaced once with the new algorithm without losing the score', async () => {
+  const env = setup(); await register(env, owner, 'НовыйАлгоритм');
+  const old = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  const stored = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(old.runId).first(); const snapshot = JSON.parse(stored.snapshot);
+  snapshot.forEach(l => delete l.planner); await env.DB.prepare('UPDATE game_runs SET snapshot = ?, score = 300 WHERE id = ?').bind(JSON.stringify(snapshot), old.runId).run();
+  const fresh = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  assert.notEqual(fresh.runId, old.runId); assert.equal((await payload(await call(env, '/api/runs', 'POST', {}, owner))).data.runId, fresh.runId);
+  const me = (await payload(await call(env, '/api/me', 'GET', undefined, owner))).data; assert.equal(me.profile.bestScore, 300); assert.equal(me.profile.gamesPlayed, 1); env.DB.close();
 });

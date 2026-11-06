@@ -16,7 +16,7 @@ export function initCharacterPicker({ onOpen, onClose, onSelect }) {
   function sync() {
     label.textContent = characterInfo(selected).name;
     for (const card of cards) card.setAttribute('aria-pressed', String(card.dataset.character === draft));
-    apply.textContent = 'Выбрать: ' + characterInfo(draft).name;
+    apply.textContent = 'Выбрать персонажа';
     if (images[selected].getAttribute('src')) portrait.src = images[selected].src;
   }
   function open() {

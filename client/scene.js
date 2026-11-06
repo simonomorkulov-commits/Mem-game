@@ -60,11 +60,22 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
   let pinnedTextures = new Set();
   async function loadTextures(memes) {
     await Promise.all(memes.filter(meme => !textures.has(meme.id)).map(async meme => {
-    const texture = await loader.loadAsync(meme.image);
+    let texture = await loader.loadAsync(meme.image);
+    if (meme.contentAspect) {
+      // Show the source frame, leaving the collection's title outside the game picture.
+      const source = texture.image, aspect = meme.contentAspect;
+      const sw = Math.min(900, 1020 * aspect), sh = sw / aspect, sx = (900 - sw) / 2, sy = (1110 - sh) / 2;
+      const canvas = document.createElement('canvas'); canvas.width = 900; canvas.height = 1250;
+      const ctx = canvas.getContext('2d'), fill = Math.max(900 / sw, 1250 / sh), fit = Math.min(900 / sw, 1250 / sh);
+      ctx.fillStyle = '#171322'; ctx.fillRect(0, 0, 900, 1250);
+      ctx.filter = 'blur(28px) brightness(0.4)'; ctx.drawImage(source, sx, sy, sw, sh, (900 - sw * fill) / 2, (1250 - sh * fill) / 2, sw * fill, sh * fill);
+      ctx.filter = 'none'; ctx.drawImage(source, sx, sy, sw, sh, (900 - sw * fit) / 2, (1250 - sh * fit) / 2, sw * fit, sh * fit);
+      texture.dispose(); texture = new THREE.CanvasTexture(canvas);
+    }
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     const aspect = texture.image.width / texture.image.height;
-    const frameAspect = 2.42 / 3.36;
+    const frameAspect = 3.18 / 4.42;
     if (aspect > frameAspect) { texture.repeat.x = frameAspect / aspect; texture.offset.x = (1 - texture.repeat.x) / 2; }
     else { texture.repeat.y = aspect / frameAspect; texture.offset.y = (1 - texture.repeat.y) / 2; }
       textures.set(meme.id, texture);
@@ -79,17 +90,17 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
   const portals = PORTAL_X.map((x, index) => {
     const group = new THREE.Group(); group.position.set(x, 0, -5.55); scene.add(group);
     const frameMat = new THREE.MeshStandardMaterial({ color: '#bda4ff', emissive: '#9164ff', emissiveIntensity: .65, roughness: .35 });
-    box(2.9, 4.05, .26, ink, 0, 2.25, 0, group);
-    const image = new THREE.Mesh(new THREE.PlaneGeometry(2.42, 3.36), new THREE.MeshBasicMaterial({ map: textures.get(MEMES[index].id) }));
-    image.position.set(0, 2.32, .15); image.userData.portal = index; group.add(image);
-    const touchTarget = new THREE.Mesh(new THREE.PlaneGeometry(2.96, 4.05), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
-    touchTarget.position.set(0, 2.25, .2); touchTarget.userData.portal = index; group.add(touchTarget);
+    box(3.62, 5.05, .26, ink, 0, 2.9, 0, group);
+    const image = new THREE.Mesh(new THREE.PlaneGeometry(3.18, 4.42), new THREE.MeshBasicMaterial({ map: textures.get(MEMES[index].id) }));
+    image.position.set(0, 2.94, .15); image.userData.portal = index; group.add(image);
+    const touchTarget = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 5.05), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    touchTarget.position.set(0, 2.9, .2); touchTarget.userData.portal = index; group.add(touchTarget);
     portalMeshes.push(touchTarget);
-    box(.085, 3.96, .1, frameMat, -1.44, 2.25, .17, group);
-    box(.085, 3.96, .1, frameMat, 1.44, 2.25, .17, group);
-    box(2.96, .085, .1, frameMat, 0, 4.23, .17, group);
-    box(2.96, .085, .1, frameMat, 0, .28, .17, group);
-    const step = box(3.15, .12, 1.08, frameMat, 0, .015, .65, group);
+    box(.085, 4.96, .1, frameMat, -1.8, 2.9, .17, group);
+    box(.085, 4.96, .1, frameMat, 1.8, 2.9, .17, group);
+    box(3.68, .085, .1, frameMat, 0, 5.38, .17, group);
+    box(3.68, .085, .1, frameMat, 0, .42, .17, group);
+    const step = box(3.75, .12, 1.08, frameMat, 0, .015, .65, group);
     step.castShadow = false;
     const pad = box(2.4, .015, .09, lavender, 0, .015, 1.5, group);
     // The number above the picture matches keyboard and touch controls.
@@ -99,7 +110,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     ctx.fillStyle = '#eee8ff'; ctx.font = 'bold 64px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(index + 1), 64, 68);
     const labelTexture = new THREE.CanvasTexture(label); labelTexture.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture }));
-    sprite.scale.set(.62, .62, 1); sprite.position.set(0, 4.92, 0); group.add(sprite);
+    sprite.scale.set(.62, .62, 1); sprite.position.set(0, 5.98, 0); group.add(sprite);
     return { group, image, frameMat, pad };
   });
 

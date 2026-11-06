@@ -1,13 +1,13 @@
 export const MEMES = [
-  { id: 'jai-shchenok', name: 'Эй, щенок!', image: './assets/jai/01-shchenok.jpg', audio: './assets/jai/01-shchenok.mp3', duration: 2.5, color: '#ffb5ed' },
-  { id: 'jai-shapka', name: 'Ах ты сволочь!', image: './assets/jai/02-shapka.jpg', audio: './assets/jai/02-shapka.mp3', duration: 2.733, color: '#bd9cff' },
-  { id: 'jai-poklon', name: 'Поклон за столом', image: './assets/jai/03-poklon.jpg', audio: './assets/jai/03-poklon.mp3', duration: 5.767, color: '#79ddff' },
-  { id: 'jai-komputer', name: 'Трое за компьютером', image: './assets/jai/04-komputer.jpg', audio: './assets/jai/04-komputer.mp3', duration: 7.073, color: '#b8ff65' },
-  { id: 'part2-avtobus', name: 'В автобусе', image: './assets/part2/01-avtobus.jpg', audio: './assets/part2/01-avtobus.mp3', duration: 1.8, color: '#ffda76' },
-  { id: 'part2-dveri', name: 'У дверного проёма', image: './assets/part2/02-dveri.jpg', audio: './assets/part2/02-dveri.mp3', duration: 4.2, color: '#bd9cff' },
-  { id: 'part2-rebenok', name: 'Ребёнок в маршрутке', image: './assets/part2/03-rebenok.jpg', audio: './assets/part2/03-rebenok.mp3', duration: 3.067, color: '#ffb5ed' },
-  { id: 'part2-mashina', name: 'Женщина в машине', image: './assets/part2/04-mashina.jpg', audio: './assets/part2/04-mashina.mp3', duration: 2.733, color: '#79ddff' },
-  { id: 'part2-tarelka', name: 'Тарелка на столе', image: './assets/part2/05-tarelka.jpg', audio: './assets/part2/05-tarelka.mp3', duration: 3.474, color: '#b8ff65' }
+  { id: 'jai-shchenok', name: 'Эй, щенок!', image: './assets/jai/01-shchenok.jpg', audio: './assets/jai/01-shchenok.mp3', contentAspect: 1.000000000, duration: 2.5, color: '#ffb5ed' },
+  { id: 'jai-shapka', name: 'Ах ты сволочь!', image: './assets/jai/02-shapka.jpg', audio: './assets/jai/02-shapka.mp3', contentAspect: 1.353383459, duration: 2.733, color: '#bd9cff' },
+  { id: 'jai-poklon', name: 'Поклон за столом', image: './assets/jai/03-poklon.jpg', audio: './assets/jai/03-poklon.mp3', contentAspect: 1.353383459, duration: 5.767, color: '#79ddff' },
+  { id: 'jai-komputer', name: 'Трое за компьютером', image: './assets/jai/04-komputer.jpg', audio: './assets/jai/04-komputer.mp3', contentAspect: 1.551724138, duration: 7.073, color: '#b8ff65' },
+  { id: 'part2-avtobus', name: 'В автобусе', image: './assets/part2/01-avtobus.jpg', audio: './assets/part2/01-avtobus.mp3', contentAspect: 0.792951542, duration: 1.8, color: '#ffda76' },
+  { id: 'part2-dveri', name: 'У дверного проёма', image: './assets/part2/02-dveri.jpg', audio: './assets/part2/02-dveri.mp3', contentAspect: 0.980926431, duration: 4.2, color: '#bd9cff' },
+  { id: 'part2-rebenok', name: 'Ребёнок в маршрутке', image: './assets/part2/03-rebenok.jpg', audio: './assets/part2/03-rebenok.mp3', contentAspect: 1.000000000, duration: 3.067, color: '#ffb5ed' },
+  { id: 'part2-mashina', name: 'Женщина в машине', image: './assets/part2/04-mashina.jpg', audio: './assets/part2/04-mashina.mp3', contentAspect: 0.829493088, duration: 2.733, color: '#79ddff' },
+  { id: 'part2-tarelka', name: 'Тарелка на столе', image: './assets/part2/05-tarelka.jpg', audio: './assets/part2/05-tarelka.mp3', contentAspect: 1.661691542, duration: 3.474, color: '#b8ff65' }
 ];
 export const TOTAL_ROUNDS = 30;
 export const PORTAL_X = [-4, 0, 4];

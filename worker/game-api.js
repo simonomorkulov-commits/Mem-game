@@ -2,6 +2,7 @@ import { scoreAnswer, INITIAL_LIVES, DEFAULT_LEVEL_COUNT, ROOM_THEMES } from '..
 import { handleDuelApi } from './duel-api.js';
 import { handleMatchApi } from './match-api.js';
 import { resolvePlayerIdentity, handleAccountApi } from './account-api.js';
+import { planRooms, ROOM_PLANNER_VERSION } from './room-planner.js';
 
 const gameJSON = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 function gameFail(message, status = 400) { throw Object.assign(new Error(message), { status }); }
@@ -79,9 +80,15 @@ async function gameLevels(env, services, manage = false) {
   const catalog = await services.catalog(); await gameSeed(env.DB, catalog.memes);
   const rows = (await env.DB.prepare('SELECT * FROM game_levels WHERE active = 1 ORDER BY position, id').all()).results;
   const all = new Map(catalog.all.map(m => [m.id, m])), active = new Set(catalog.memes.map(m => m.id));
+  const pools = [gameStarterPool(catalog.memes.filter(m => m.id.startsWith('jai-') || m.id.startsWith('part2-'))), gameStarterPool(catalog.memes)].filter(pool => pool.length >= 3);
+  const automaticPool = row => {
+    const index = Number(row.id.slice(8)) - 1;
+    if (!row.id.startsWith('starter-') || !Number.isInteger(index) || index < 0 || row.title !== `Комната ${index + 1}`) return undefined;
+    return pools.some(pool => { const expected = gameStarterContent(index, pool); return expected.target === row.target_id && expected.options.join(':') === [row.option_a, row.option_b, row.option_c].join(':'); }) ? catalog.memes : undefined;
+  };
   const playable = row => !row.id.startsWith('starter-') || [row.option_a, row.option_b, row.option_c].every(id => active.has(id));
   return rows.filter(row => [row.option_a, row.option_b, row.option_c].every(id => all.has(id)) && (manage || playable(row)))
-    .map((row, index) => ({ ...row, number: manage ? row.position : index + 1, playable: playable(row), target: all.get(row.target_id), options: [row.option_a, row.option_b, row.option_c].map(id => all.get(id)) }));
+    .map((row, index) => ({ ...row, number: manage ? row.position : index + 1, playable: playable(row), target: all.get(row.target_id), options: [row.option_a, row.option_b, row.option_c].map(id => all.get(id)), automaticPool: automaticPool(row) }));
 }
 async function gameProfile(db, user) { return user ? db.prepare('SELECT * FROM players WHERE id = ?').bind(user).first() : null; }
 function gamePublicProfile(profile) {
@@ -143,11 +150,12 @@ async function gameStart(request, env, services, user) {
       const legacy = new Set(['bruh', 'vine-boom', 'among-us', 'metal-pipe', 'anime-wow', 'spongebob']);
       const snapshot = JSON.parse(active.snapshot);
       const outdatedStarterPack = snapshot.some(level => level.id?.startsWith('starter-')) && !snapshot.some(level => level.target.id.startsWith('part2-')) && levels.some(level => level.target.id.startsWith('part2-'));
-      if (outdatedStarterPack || snapshot.some(level => legacy.has(level.target.id))) await gameFinish(env, active);
+      const outdatedPlanner = snapshot.some(level => level.planner !== ROOM_PLANNER_VERSION && levels.some(current => current.id === level.id && current.automaticPool));
+      if (outdatedPlanner || outdatedStarterPack || snapshot.some(level => legacy.has(level.target.id))) await gameFinish(env, active);
       else return gameJSON(gameCurrent(active));
     }
   }
-  const snapshot = levels.map(level => ({ id: level.id, title: level.title, theme: level.theme, target: level.target, options: gameShuffle(level.options) }));
+  const snapshot = planRooms(levels);
   const id = crypto.randomUUID(), token = crypto.randomUUID() + crypto.randomUUID(), now = Date.now();
   await env.DB.prepare('INSERT INTO game_runs (id, player_id, token_hash, snapshot, lives, started_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .bind(id, profile ? user : null, await gameHash(token), JSON.stringify(snapshot), INITIAL_LIVES, now, now + 4 * 60 * 60 * 1000).run();
@@ -223,10 +231,10 @@ export async function handleGameApi(request, env, services) {
   if (pathname.startsWith('/api/auth/')) return handleAccountApi(request, env, { body: gameBody });
   const identity = env.PLAYER_AUTH || await resolvePlayerIdentity(request, env);
   const user = identity.id;
-  if (pathname === '/api/matches' || pathname.startsWith('/api/matches/')) return handleMatchApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody, levels: () => gameLevels(env, services), shuffle: gameShuffle });
+  if (pathname === '/api/matches' || pathname.startsWith('/api/matches/')) return handleMatchApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody, levels: () => gameLevels(env, services), shuffle: gameShuffle, plan: planRooms });
   if (pathname === '/api/duels' || pathname.startsWith('/api/duels/')) {
     return handleDuelApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody,
-      levels: () => gameLevels(env, services), shuffle: gameShuffle });
+      levels: () => gameLevels(env, services), shuffle: gameShuffle, plan: planRooms });
   }
   if (pathname === '/api/me' && method === 'GET') {
     const profile = await gameProfile(env.DB, user);

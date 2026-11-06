@@ -77,7 +77,7 @@ async function duelCurrent(env, user) {
 async function duelSnapshot(services, pack) {
   const levels = await services.levels(); if (!levels.length) duelFail('Пока нет готовых уровней. Автор может добавить их в редакторе.');
   const count = Math.ceil(levels.length / 5), index = Math.max(0, Math.min(count - 1, Math.floor(Number(pack) || 0)));
-  return { pack: index, snapshot: JSON.stringify(levels.slice(index * 5, index * 5 + 5).map(level => ({ title: level.title, theme: level.theme, target: level.target, options: services.shuffle(level.options) }))) };
+  return { pack: index, snapshot: JSON.stringify(services.plan(levels.slice(index * 5, index * 5 + 5))) };
 }
 async function duelCreate(env, services, user, body) {
   const current = await duelCurrent(env, user);

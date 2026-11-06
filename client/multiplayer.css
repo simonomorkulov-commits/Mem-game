@@ -76,7 +76,8 @@
   .group-score { padding: 6px; }
   .group-score span { font-size: 10px; }
   .group-score b { font-size: 20px; }
-  .duel-mode .sound-prompt { top: calc(113px + env(safe-area-inset-top)); }
+  .duel-mode .sound-prompt { top: calc(110px + env(safe-area-inset-top)); min-height: 36px; padding: 2px 4px 2px 10px; }
+  .duel-mode .sound-prompt button { min-height: 30px; padding: 4px 10px; }
   .duel-stage { padding: calc(115px + env(safe-area-inset-top)) 14px max(22px, env(safe-area-inset-bottom)); }
   .duel-stage-card { padding: 22px 18px; }
   .duel-stage-card h2 { font-size: 28px; }

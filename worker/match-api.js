@@ -126,7 +126,7 @@ async function groupCurrent(env, user) {
 async function groupSnapshot(services, value) {
   const levels = await services.levels(); if (!levels.length) groupFail('Автор ещё не добавил уровни для игры.');
   const count = Math.ceil(levels.length / 5), pack = Math.max(0, Math.min(count - 1, Math.floor(Number(value) || 0)));
-  return { pack, snapshot: JSON.stringify(levels.slice(pack * 5, pack * 5 + 5).map(l => ({ title: l.title, theme: l.theme, target: l.target, options: services.shuffle(l.options) }))) };
+  return { pack, snapshot: JSON.stringify(services.plan(levels.slice(pack * 5, pack * 5 + 5))) };
 }
 async function groupCreate(env, services, user, body) {
   const current = await groupCurrent(env, user); if (current && ['lobby', 'playing'].includes(current.status)) return current;

@@ -1,8 +1,8 @@
 import * as THREE from './vendor/three.module.js';
 
 export const CHARACTERS = [
-  { id: 'azamat', name: 'Азамат', description: 'Ак-калпак и чапан', color: '#b9ff66' },
-  { id: 'aigerim', name: 'Айгерим', description: 'Праздничное платье и шөкүлө', color: '#ffa7bf' }
+  { id: 'azamat', name: 'Парень', description: 'Ак-калпак и чапан', color: '#b9ff66' },
+  { id: 'aigerim', name: 'Девушка', description: 'Праздничное платье и шөкүлө', color: '#ffa7bf' }
 ];
 export const characterInfo = id => CHARACTERS.find(character => character.id === id) || CHARACTERS[0];
 
