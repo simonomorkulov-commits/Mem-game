@@ -1,0 +1,264 @@
+{
+  "source": "А какой ваш любимый кыргызский мем 😂Мы находимся по адресу 📍Ахунбаева 51 Айни 91 Ой - Терскен .mp4",
+  "sourceCredit": "@maxgame.kg — подпись на пользовательском видео",
+  "selection": "Четыре новые мемные сцены. Похожие вставки из коллекции, интервью, выступление с микрофоном и монтажная заставка исключены.",
+  "comparisonNote": "Повторы исключены также по изображению и сцене, даже если речь или монтаж отличаются. Числа аудиосравнения не трактуются как подтверждение идентичной дорожки.",
+  "memes": [
+    {
+      "id": "01-room-conversation",
+      "name": "Разговор в комнате",
+      "start": 5.133333333333334,
+      "end": 7.933333333333334,
+      "crop": [
+        0,
+        136,
+        720,
+        1008
+      ],
+      "duration": 2.8,
+      "image": "01-room-conversation/image.jpg",
+      "audio": "01-room-conversation/audio.mp3",
+      "preview": "01-room-conversation/clip.mp4",
+      "sourceFrameSeconds": 6.2
+    },
+    {
+      "id": "02-night-conversation",
+      "name": "Ночной разговор с инспектором",
+      "start": 29.4,
+      "end": 35.1,
+      "crop": [
+        0,
+        440,
+        720,
+        402
+      ],
+      "duration": 5.7,
+      "image": "02-night-conversation/image.jpg",
+      "audio": "02-night-conversation/audio.mp3",
+      "preview": "02-night-conversation/clip.mp4",
+      "sourceFrameSeconds": 30.8
+    },
+    {
+      "id": "03-driver",
+      "name": "Водитель у окна машины",
+      "start": 38.86666666666667,
+      "end": 42.43333333333333,
+      "crop": [
+        0,
+        320,
+        660,
+        840
+      ],
+      "duration": 3.567,
+      "image": "03-driver/image.jpg",
+      "audio": "03-driver/audio.mp3",
+      "preview": "03-driver/clip.mp4",
+      "sourceFrameSeconds": 40.2
+    },
+    {
+      "id": "04-night-cap",
+      "name": "Мужчина в кепке ночью",
+      "start": 47.06666666666667,
+      "end": 53.06666666666667,
+      "crop": [
+        0,
+        310,
+        720,
+        660
+      ],
+      "duration": 6.0,
+      "image": "04-night-cap/image.jpg",
+      "audio": "04-night-cap/audio.mp3",
+      "preview": "04-night-cap/clip.mp4",
+      "sourceFrameSeconds": 49.5
+    }
+  ],
+  "excluded": [
+    {
+      "start": 0,
+      "end": 5.133333333333334,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 7.933333333333334,
+      "end": 12.1,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 12.1,
+      "end": 14.133333333333333,
+      "reason": "Визуально похожая вставка в синих костюмах с мегафоном; уже представлена в коллекции"
+    },
+    {
+      "start": 14.133333333333333,
+      "end": 18.033333333333335,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 18.033333333333335,
+      "end": 23.733333333333334,
+      "reason": "Повтор сцены за столом, уже представленной мемом «Тарелка на столе»"
+    },
+    {
+      "start": 23.733333333333334,
+      "end": 29.4,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 35.1,
+      "end": 38.86666666666667,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 42.43333333333333,
+      "end": 47.06666666666667,
+      "reason": "Уличные интервью с микрофоном"
+    },
+    {
+      "start": 53.06666666666667,
+      "end": 54.93333333333333,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 54.93333333333333,
+      "end": 57.266666666666666,
+      "reason": "Повтор вставки с женщиной; эта сцена ранее исключена как другой монтаж существующего мема"
+    },
+    {
+      "start": 57.266666666666666,
+      "end": 59.333333333333336,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 59.333333333333336,
+      "end": 61.166666666666664,
+      "reason": "Монтажная заставка A few moments later, а не самостоятельная мемная сцена"
+    },
+    {
+      "start": 61.166666666666664,
+      "end": 63.43333333333333,
+      "reason": "Уличное интервью с микрофоном"
+    },
+    {
+      "start": 63.43333333333333,
+      "end": 68.31,
+      "reason": "Официальное выступление с настольным микрофоном; исключено по предпочтению пользователя"
+    }
+  ],
+  "duplicateComparison": [
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\01-shchenok.mp3",
+      "similarity": 0.105,
+      "sourceStart": 42.116,
+      "speed": 1.02
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\02-shapka.mp3",
+      "similarity": 0.089,
+      "sourceStart": 12.735,
+      "speed": 1.04
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\03-poklon.mp3",
+      "similarity": 0.107,
+      "sourceStart": 35.033,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\jai\\04-komputer.mp3",
+      "similarity": 0.081,
+      "sourceStart": 5.258,
+      "speed": 0.98
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\01-avtobus.mp3",
+      "similarity": 0.117,
+      "sourceStart": 37.632,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\02-dveri.mp3",
+      "similarity": 0.106,
+      "sourceStart": 63.535,
+      "speed": 0.98
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\03-rebenok.mp3",
+      "similarity": 0.112,
+      "sourceStart": 64.736,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\04-mashina.mp3",
+      "similarity": 0.098,
+      "sourceStart": 27.672,
+      "speed": 1.02
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part2\\05-tarelka.mp3",
+      "similarity": 0.143,
+      "sourceStart": 37.555,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part3\\01-blue-costumes.mp3",
+      "similarity": 0.105,
+      "sourceStart": 33.022,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part3\\02-green-door.mp3",
+      "similarity": 0.207,
+      "sourceStart": 60.98,
+      "speed": 1.02
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part3\\03-sunglasses.mp3",
+      "similarity": 0.112,
+      "sourceStart": 63.964,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\01-car-conversation.mp3",
+      "similarity": 0.114,
+      "sourceStart": 65.525,
+      "speed": 1.02
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\02-crying-woman.mp3",
+      "similarity": 0.119,
+      "sourceStart": 42.351,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\03-telephone.mp3",
+      "similarity": 0.105,
+      "sourceStart": 38.219,
+      "speed": 0.96
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\04-water.mp3",
+      "similarity": 0.115,
+      "sourceStart": 25.459,
+      "speed": 1.04
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\05-stage-reaction.mp3",
+      "similarity": 0.099,
+      "sourceStart": 55.851,
+      "speed": 0.98
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\06-classroom.mp3",
+      "similarity": 0.084,
+      "sourceStart": 4.034,
+      "speed": 1.02
+    },
+    {
+      "existing": "outputs\\meme-game\\client\\assets\\part4\\07-snow-crown.mp3",
+      "similarity": 0.199,
+      "sourceStart": 54.391,
+      "speed": 1.02
+    }
+  ]
+}

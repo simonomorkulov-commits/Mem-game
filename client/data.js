@@ -17,7 +17,11 @@ export const MEMES = [
   { id: 'part4-water', name: 'Мужчина и вода', image: './assets/part4/04-water.jpg', audio: './assets/part4/04-water.mp3', contentAspect: .64, duration: 4.867, color: '#79ddff' },
   { id: 'part4-stage-reaction', name: 'Реакция на сцене', image: './assets/part4/05-stage-reaction.jpg', audio: './assets/part4/05-stage-reaction.mp3', contentAspect: 1.434262948, duration: 2.167, color: '#bd9cff' },
   { id: 'part4-classroom', name: 'Парень у доски', image: './assets/part4/06-classroom.jpg', audio: './assets/part4/06-classroom.mp3', contentAspect: 1, duration: 4.9, color: '#b8ff65' },
-  { id: 'part4-snow-crown', name: 'Девушка в короне на снегу', image: './assets/part4/07-snow-crown.jpg', audio: './assets/part4/07-snow-crown.mp3', contentAspect: .944881890, duration: 1.5, color: '#ffb5ed' }
+  { id: 'part4-snow-crown', name: 'Девушка в короне на снегу', image: './assets/part4/07-snow-crown.jpg', audio: './assets/part4/07-snow-crown.mp3', contentAspect: .944881890, duration: 1.5, color: '#ffb5ed' },
+  { id: 'part5-room-conversation', name: 'Разговор в комнате', image: './assets/part5/01-room-conversation.jpg', audio: './assets/part5/01-room-conversation.mp3', contentAspect: .714285714, duration: 2.8, color: '#bd9cff' },
+  { id: 'part5-night-conversation', name: 'Ночной разговор с инспектором', image: './assets/part5/02-night-conversation.jpg', audio: './assets/part5/02-night-conversation.mp3', contentAspect: 1.791044776, duration: 5.7, color: '#79ddff' },
+  { id: 'part5-driver', name: 'Водитель у окна машины', image: './assets/part5/03-driver.jpg', audio: './assets/part5/03-driver.mp3', contentAspect: .785714286, duration: 3.567, color: '#ffda76' },
+  { id: 'part5-night-cap', name: 'Мужчина в кепке ночью', image: './assets/part5/04-night-cap.jpg', audio: './assets/part5/04-night-cap.mp3', contentAspect: 1.090909091, duration: 6, color: '#b8ff65' }
 ];
 export const TOTAL_ROUNDS = 30;
 export const PORTAL_X = [-4, 0, 4];
