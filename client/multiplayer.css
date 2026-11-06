@@ -1,4 +1,10 @@
 .online-entry-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 9px; }
+.online-population { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 9px 0 0; color: #c7ebb5; font-size: 12px; line-height: 1.5; }
+.online-population::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #b9ff66; flex: 0 0 6px; }
+.online-population b { font-variant-numeric: tabular-nums; }
+.online-population[data-online-state="unavailable"] { color: #b6a2c8; }
+.online-population[data-online-state="unavailable"]::before { background: #b6a2c8; }
+.online-dialog .online-population { justify-content: flex-start; margin: 0 0 12px; }
 .online-entry-buttons .button { margin: 0; width: 100%; min-width: 0; min-height: 48px; padding: 0 12px; font-size: 14px; border-color: #a784cf; background: #39294de8; color: #e2cfff; }
 .online-dialog .community-heading h2 { font-size: clamp(25px, 7vw, 30px); }
 .online-dialog .community-heading .eyebrow { font-size: 9px; line-height: 1.6; }

@@ -1,6 +1,6 @@
 {
   "name": "igra-memov",
-  "version": "3.5.1",
+  "version": "3.6.0",
   "private": true,
   "type": "module",
   "description": "3D-игра: услышь мем и зайди в правильную картинку",

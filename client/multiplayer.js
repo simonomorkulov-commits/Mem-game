@@ -1,4 +1,5 @@
 import { requestAPI } from './account.js';
+import { initOnlinePresence } from './online-presence.js';
 
 const $ = id => document.getElementById(id);
 export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, preload, prepare, activate, stop, play, reveal }) {
@@ -7,6 +8,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
   let prepared = '', preparing = '', played = '', revealed = '', preloaded = '', feedbackTimer, pending = null, selectedRoom = null;
   const query = new URLSearchParams(location.search);
   let invitation = /^[a-f0-9-]{36}$/.test(query.get('room') || '') ? query.get('room') : null;
+  const presence = initOnlinePresence(() => allowed && (opened || active));
   const key = () => room ? room.id + ':' + room.round : '';
   const path = action => '/api/matches/' + room.id + (action ? '/' + action : '');
   const post = (url, body = {}) => requestAPI(url, { method: 'POST', body: JSON.stringify(body) });
@@ -20,6 +22,7 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
   }
   async function access() {
     const me = await account.refresh(); allowed = me.signedIn && !!me.profile;
+    presence.refresh();
     $('online-profile').hidden = false;
     pane(mode); return allowed;
   }
@@ -229,12 +232,13 @@ export function initMultiplayer({ account, canOpen, enter, exit, unlockAudio, pr
   function leaveView(clear = true) {
     active = false; localReady = false; pending = null; generation++; clearTimeout(pollTimer); clearTimeout(listTimer); clearTimeout(feedbackTimer); $('race-feedback').hidden = true; clearInterval(clockTimer); clockTimer = null;
     stop(); $('duel-hud').hidden = $('duel-stage').hidden = true; exit(); if (clear) room = null;
+    presence.refresh();
   }
   function askLeave() { if (active) { stop(); $('duel-leave-dialog').showModal(); } }
   $('find-games-button').addEventListener('click', () => open('find'));
   $('create-room-button').addEventListener('click', () => open('create'));
   $('online-close').addEventListener('click', () => $('online-dialog').close());
-  $('online-dialog').addEventListener('close', () => { opened = false; clearTimeout(listTimer); if (!active) { clearTimeout(pollTimer); generation++; } });
+  $('online-dialog').addEventListener('close', () => { opened = false; presence.refresh(); clearTimeout(listTimer); if (!active) { clearTimeout(pollTimer); generation++; } });
   $('online-to-create').addEventListener('click', () => open('create'));
   $('online-to-find').addEventListener('click', () => open('find'));
   $('online-profile').addEventListener('click', () => account.openProfile());

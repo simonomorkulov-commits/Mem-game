@@ -1,6 +1,7 @@
 import { scoreAnswer, INITIAL_LIVES, DEFAULT_LEVEL_COUNT, ROOM_THEMES } from '../client/scoring.js';
 import { handleDuelApi } from './duel-api.js';
 import { handleMatchApi } from './match-api.js';
+import { handlePresenceApi } from './presence-api.js';
 import { resolvePlayerIdentity, handleAccountApi } from './account-api.js';
 import { planRooms, ROOM_PLANNER_VERSION } from './room-planner.js';
 
@@ -231,6 +232,7 @@ export async function handleGameApi(request, env, services) {
   if (pathname.startsWith('/api/auth/')) return handleAccountApi(request, env, { body: gameBody });
   const identity = env.PLAYER_AUTH || await resolvePlayerIdentity(request, env);
   const user = identity.id;
+  if (pathname === '/api/matches/presence') return handlePresenceApi(request, env, { user, profile: user ? await gameProfile(env.DB, user) : null, body: gameBody });
   if (pathname === '/api/matches' || pathname.startsWith('/api/matches/')) return handleMatchApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody, levels: () => gameLevels(env, services), shuffle: gameShuffle, plan: planRooms });
   if (pathname === '/api/duels' || pathname.startsWith('/api/duels/')) {
     return handleDuelApi(request, env, { user, profile: await gameProfile(env.DB, user), body: gameBody,
