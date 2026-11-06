@@ -206,6 +206,25 @@ test('The existing campaign uses all available sounds and disjoint picture sets;
   assert.equal((await payload(await call(env, '/api/levels'))).data.total, 30); env.DB.close();
 });
 
+test('An existing twelve-meme starter collection expands to the new video pack without re-seeding levels', async () => {
+  const env = setup(); await register(env, owner, 'ЧетвёртаяПодборка'); await call(env, '/api/levels');
+  const oldPool = [...MEMES.filter(m => m.id.startsWith('part2-')), ...MEMES.filter(m => m.id.startsWith('jai-') || m.id.startsWith('part3-'))];
+  assert.equal(oldPool.length, 12);
+  for (let i = 0; i < 30; i++) {
+    const target = oldPool[i % oldPool.length], others = oldPool.filter(m => m.id !== target.id), pairs = [];
+    for (let a = 0; a < others.length - 1; a++) for (let b = a + 1; b < others.length; b++) pairs.push([others[a], others[b]]);
+    const [a, b] = pairs[Math.floor(i / oldPool.length) % pairs.length];
+    await env.DB.prepare('UPDATE game_levels SET target_id = ?, option_a = ?, option_b = ?, option_c = ? WHERE id = ?').bind(target.id, target.id, a.id, b.id, `starter-${String(i + 1).padStart(3, '0')}`).run();
+  }
+  const firstRow = await env.DB.prepare("SELECT * FROM game_levels WHERE id = 'starter-001'").first();
+  const run = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  const snapshot = JSON.parse((await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(run.runId).first()).snapshot);
+  const targets = snapshot.slice(0, MEMES.length).map(level => level.target.id), added = MEMES.filter(m => m.id.startsWith('part4-'));
+  assert.equal(added.length, 7); assert.equal(new Set(targets).size, MEMES.length); assert.ok(added.every(m => targets.includes(m.id)));
+  assert.deepEqual(await env.DB.prepare("SELECT * FROM game_levels WHERE id = 'starter-001'").first(), firstRow);
+  env.DB.close();
+});
+
 test('The nine-meme upgrade preserves deleted rooms and author edits and never reapplies after completion', async () => {
   const env = setup(); await fourMemeStarterFixture(env); await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
   await env.DB.prepare("DELETE FROM game_levels WHERE id = 'starter-002'").run();
