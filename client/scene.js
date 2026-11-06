@@ -131,6 +131,19 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
 
   let position = { x: 0, z: 4 }, active = false, target = null, last = performance.now(), elapsed = 0, phase = 0;
   let joystick = { x: 0, z: 0 };
+  let cameraOffset = 0;
+  const cameraProbe = new THREE.Vector3();
+  function followCharacter(dt, snap = false) {
+    // Pan parallel to the room after the avatar leaves the middle of the view.
+    // A wider visible area near the portals naturally returns the camera to the centre.
+    const bottomEdge = Math.abs(cameraProbe.set(cameraOffset + 1, 0, position.z + .65).project(camera).x);
+    const topEdge = Math.abs(cameraProbe.set(cameraOffset + 1, 2.75, position.z + .65).project(camera).x);
+    const deadZone = .48 / Math.max(bottomEdge, topEdge, .001);
+    const targetOffset = position.x - Math.max(-deadZone, Math.min(deadZone, position.x));
+    cameraOffset += (targetOffset - cameraOffset) * (snap ? 1 : 1 - Math.exp(-8 * dt));
+    camera.position.x = cameraOffset;
+    camera.lookAt(cameraOffset, 1, -1.4); camera.updateMatrixWorld();
+  }
   let pendingTap = null;
   const keys = new Set();
   const clearKeys = () => { keys.clear(); joystick = { x: 0, z: 0 }; pendingTap = null; target = null; destination.visible = false; };
@@ -166,9 +179,10 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     const { width, height } = canvas.getBoundingClientRect();
     if (!width || !height) return;
     renderer.setSize(width, height, false); camera.aspect = width / height;
-    if (camera.aspect < 1.2) { camera.position.set(0, 13.5, 22); camera.fov = 51; }
-    else { camera.position.set(0, 11.5, 16.8); camera.fov = 43; }
-    camera.lookAt(0, 1, -1.4); camera.updateProjectionMatrix();
+    if (camera.aspect < 1.2) { camera.position.set(cameraOffset, 13.5, 22); camera.fov = 51; }
+    else { camera.position.set(cameraOffset, 11.5, 16.8); camera.fov = 43; }
+    camera.lookAt(cameraOffset, 1, -1.4); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    followCharacter(0, true);
     if (!document.hidden) renderer.render(scene, camera);
   });
   observer.observe(canvas);
@@ -196,6 +210,7 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
       character.rotation.y += difference * Math.min(dt * 14, 1);
     }
     character.position.set(position.x, walking ? Math.abs(Math.sin(phase)) * .06 : Math.sin(elapsed * 2) * .025, position.z);
+    followCharacter(dt);
     for (const { leg, arm, side } of rig.limbs) {
       leg.rotation.x = walking ? Math.sin(phase) * .55 * side : 0;
       arm.rotation.x = walking ? -Math.sin(phase) * .5 * side : Math.sin(elapsed * 2) * .035;
@@ -215,7 +230,10 @@ export async function createWorld(canvas, onPortal, onWalk, characterId = 'azama
     get position() { return { ...position }; },
     get active() { return active; },
     setActive(value) { active = value; clearKeys(); },
-    reset() { position = { x: 0, z: 4.6 }; character.rotation.y = 0; clearKeys(); },
+    reset() {
+      position = { x: 0, z: 4.6 }; character.rotation.y = 0; clearKeys();
+      cameraOffset = 0; camera.position.x = 0; camera.lookAt(0, 1, -1.4); camera.updateMatrixWorld();
+    },
     walkToPortal(index) { if (index >= 0 && index < 3) walkTo(PORTAL_X[index], -4.9); },
     setDirection(code, down) { if (!active) return; if (down) { keys.add(code); target = null; destination.visible = false; } else keys.delete(code); },
     setJoystick(x, z) { if (!active) return; joystick = { x, z }; if (joystickStrength(x, z) > 0) { target = null; destination.visible = false; } },
