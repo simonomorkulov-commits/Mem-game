@@ -16,6 +16,32 @@ async function gameBody(request) {
 }
 function gameShuffle(items) { const result = [...items]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; }
 
+function gameStarterPool(memes) { return [...memes.filter(m => m.id.startsWith('part2-')), ...memes.filter(m => !m.id.startsWith('part2-'))]; }
+function gameStarterContent(index, memes) {
+  const target = memes[index % memes.length], others = memes.filter(m => m.id !== target.id), pairs = [];
+  for (let a = 0; a < others.length - 1; a++) for (let b = a + 1; b < others.length; b++) pairs.push([others[a], others[b]]);
+  const [a, b] = pairs[Math.floor(index / memes.length) % pairs.length];
+  return { target: target.id, options: [target.id, a.id, b.id] };
+}
+async function gameUpgradeSecondPack(db, memes) {
+  if (await db.prepare("SELECT value FROM game_config WHERE key = 'video-pack-v2'").first()) return;
+  const pool = gameStarterPool(memes.filter(m => m.id.startsWith('jai-') || m.id.startsWith('part2-')));
+  if (pool.filter(m => m.id.startsWith('part2-')).length !== 5) return;
+  const previous = pool.filter(m => m.id.startsWith('jai-')), oldIds = new Set(previous.map(m => m.id));
+  if (previous.length < 3) return;
+  const rows = (await db.prepare("SELECT * FROM game_levels WHERE id LIKE 'starter-%'").all()).results, changes = [];
+  for (const row of rows) {
+    const index = Number(row.id.slice(8)) - 1;
+    if (!Number.isInteger(index) || index < 0 || row.title !== `Комната ${index + 1}` || ![row.target_id, row.option_a, row.option_b, row.option_c].every(id => oldIds.has(id))) continue;
+    const prior = gameStarterContent(index, previous), target = previous[index % previous.length], others = previous.filter(m => m.id !== target.id), pair = Math.floor(index / previous.length) % others.length;
+    const oldOptions = [row.option_a, row.option_b, row.option_c].join(':');
+    if (row.target_id !== target.id || ![prior.options.join(':'), [target.id, others[pair].id, others[(pair + 1) % others.length].id].join(':')].includes(oldOptions)) continue;
+    const next = gameStarterContent(index, pool);
+    changes.push(db.prepare("UPDATE game_levels SET target_id = ?, option_a = ?, option_b = ?, option_c = ? WHERE id = ? AND title = ? AND target_id = ? AND option_a = ? AND option_b = ? AND option_c = ? AND NOT EXISTS (SELECT 1 FROM game_config WHERE key = 'video-pack-v2')").bind(next.target, ...next.options, row.id, row.title, row.target_id, row.option_a, row.option_b, row.option_c));
+  }
+  changes.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('video-pack-v2', '1')"));
+  await db.batch(changes);
+}
 async function gameSeed(db, memes) {
   if (await db.prepare("SELECT value FROM game_config WHERE key = 'seeded'").first()) {
     // Upgrade existing starter rooms once; deleted rooms and author-created rooms stay intact.
@@ -34,21 +60,19 @@ async function gameSeed(db, memes) {
       changes.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('jai-pack-v1', '1')"));
       await db.batch(changes);
     }
+    await gameUpgradeSecondPack(db, memes);
     return;
   }
   if (memes.length < 3) gameFail('Для игры нужны хотя бы три мема.');
-  const themes = Object.keys(ROOM_THEMES), statements = [];
+  const themes = Object.keys(ROOM_THEMES), statements = [], pool = gameStarterPool(memes);
   for (let i = 0; i < DEFAULT_LEVEL_COUNT; i++) {
-    const target = memes[i % memes.length];
-    const others = memes.filter(m => m.id !== target.id);
-    const pairs = [];
-    for (let a = 0; a < others.length - 1; a++) for (let b = a + 1; b < others.length; b++) pairs.push([others[a], others[b]]);
-    const [a, b] = pairs[Math.floor(i / memes.length) % pairs.length];
+    const content = gameStarterContent(i, pool);
     statements.push(db.prepare('INSERT OR IGNORE INTO game_levels (id, position, title, target_id, option_a, option_b, option_c, theme, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(`starter-${String(i + 1).padStart(3, '0')}`, i + 1, `Комната ${i + 1}`, target.id, target.id, a.id, b.id, themes[Math.floor(i / 5) % themes.length], new Date().toISOString()));
+      .bind(`starter-${String(i + 1).padStart(3, '0')}`, i + 1, `Комната ${i + 1}`, content.target, ...content.options, themes[Math.floor(i / 5) % themes.length], new Date().toISOString()));
   }
   statements.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('seeded', '1')"));
   statements.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('jai-pack-v1', '1')"));
+  if (pool.some(m => m.id.startsWith('part2-'))) statements.push(db.prepare("INSERT OR IGNORE INTO game_config (key, value) VALUES ('video-pack-v2', '1')"));
   await db.batch(statements);
 }
 async function gameLevels(env, services, manage = false) {
@@ -112,15 +136,17 @@ function gameRecordStatements(env, id, playerId) {
 async function gameStart(request, env, services, user) {
   const profile = await gameProfile(env.DB, user);
   if (user && !profile) gameFail('Сначала выбери ник в профиле.', 428);
+  const levels = await gameLevels(env, services); if (!levels.length) gameFail('Пока нет готовых уровней. Автор может создать их в редакторе.');
   if (profile) {
     const active = await env.DB.prepare("SELECT * FROM game_runs WHERE player_id = ? AND status = 'active' AND expires_at > ? ORDER BY started_at DESC LIMIT 1").bind(user, Date.now()).first();
     if (active) {
       const legacy = new Set(['bruh', 'vine-boom', 'among-us', 'metal-pipe', 'anime-wow', 'spongebob']);
-      if (JSON.parse(active.snapshot).some(level => legacy.has(level.target.id))) await gameFinish(env, active);
+      const snapshot = JSON.parse(active.snapshot);
+      const outdatedStarterPack = snapshot.some(level => level.id?.startsWith('starter-')) && !snapshot.some(level => level.target.id.startsWith('part2-')) && levels.some(level => level.target.id.startsWith('part2-'));
+      if (outdatedStarterPack || snapshot.some(level => legacy.has(level.target.id))) await gameFinish(env, active);
       else return gameJSON(gameCurrent(active));
     }
   }
-  const levels = await gameLevels(env, services); if (!levels.length) gameFail('Пока нет готовых уровней. Автор может создать их в редакторе.');
   const snapshot = levels.map(level => ({ id: level.id, title: level.title, theme: level.theme, target: level.target, options: gameShuffle(level.options) }));
   const id = crypto.randomUUID(), token = crypto.randomUUID() + crypto.randomUUID(), now = Date.now();
   await env.DB.prepare('INSERT INTO game_runs (id, player_id, token_hash, snapshot, lives, started_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')

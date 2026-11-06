@@ -132,7 +132,7 @@ test('Starting after the pack replacement saves an old run and opens a new run w
   const row = await env.DB.prepare('SELECT snapshot FROM game_runs WHERE id = ?').bind(first.runId).first(), snapshot = JSON.parse(row.snapshot);
   snapshot[0].target.id = 'bruh'; await env.DB.prepare('UPDATE game_runs SET snapshot = ?, score = 123 WHERE id = ?').bind(JSON.stringify(snapshot), first.runId).run();
   const second = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
-  assert.notEqual(first.runId, second.runId); assert.equal(second.total, 30); assert.ok(second.challenge.target.id.startsWith('jai-'));
+  assert.notEqual(first.runId, second.runId); assert.equal(second.total, 30); assert.ok(second.challenge.target.id.startsWith('part2-'));
   assert.equal((await payload(await call(env, '/api/me', 'GET', undefined, owner))).data.profile.bestScore, 123);
   assert.equal((await env.DB.prepare('SELECT status FROM game_runs WHERE id = ?').bind(first.runId).first()).status, 'finished'); env.DB.close();
 });
@@ -153,4 +153,56 @@ test('All five part-two memes are available to the author and playable in author
   assert.deepEqual(race.track.map(level => level.target.id), added.map(m => m.id));
   for (const level of race.track) assert.ok(level.target.audio.includes('/assets/part2/'));
   env.DB.close();
+});
+
+async function fourMemeStarterFixture(env) {
+  await call(env, '/api/levels');
+  const ids = ['jai-shchenok', 'jai-shapka', 'jai-poklon', 'jai-komputer'];
+  for (let i = 0; i < 30; i++) {
+    const target = ids[i % 4], others = ids.filter(id => id !== target), pair = Math.floor(i / 4) % 3;
+    await env.DB.prepare('UPDATE game_levels SET target_id = ?, option_a = ?, option_b = ?, option_c = ? WHERE id = ?').bind(target, target, others[pair], others[(pair + 1) % 3], `starter-${String(i + 1).padStart(3, '0')}`).run();
+  }
+}
+
+test('The existing four-meme campaign is upgraded to nine playable sounds, starting with all five new memes in campaign and race', async () => {
+  const env = setup(); await register(env, owner, 'ВсеДевять'); await fourMemeStarterFixture(env);
+  await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
+  let run = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  assert.equal(run.total, 30); const targets = [];
+  for (let i = 0; i < 9; i++) {
+    targets.push(run.challenge.target.id);
+    assert.equal(new Set(run.challenge.options.map(m => m.id)).size, 3);
+    assert.ok(run.challenge.options.some(m => m.id === run.challenge.target.id));
+    const reply = await payload(await call(env, `/api/runs/${run.runId}/answer`, 'POST', { revision: run.revision, requestId: crypto.randomUUID(), optionId: run.challenge.target.id }, owner));
+    assert.equal(reply.status, 200); run = reply.data.next;
+  }
+  assert.deepEqual(targets.slice(0, 5), MEMES.filter(m => m.id.startsWith('part2-')).map(m => m.id));
+  assert.deepEqual([...targets].sort(), MEMES.map(m => m.id).sort());
+  const race = (await payload(await call(env, '/api/matches', 'POST', { pack: 0 }, owner))).data;
+  assert.deepEqual(race.track.map(level => level.target.id), targets.slice(0, 5));
+  assert.equal((await payload(await call(env, '/api/levels'))).data.total, 30); env.DB.close();
+});
+
+test('The nine-meme upgrade preserves deleted rooms and author edits and never reapplies after completion', async () => {
+  const env = setup(); await fourMemeStarterFixture(env); await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
+  await env.DB.prepare("DELETE FROM game_levels WHERE id = 'starter-002'").run();
+  await env.DB.prepare("UPDATE game_levels SET title = 'Мой порядок' WHERE id = 'starter-003'").run();
+  const before = await env.DB.prepare("SELECT * FROM game_levels WHERE id = 'starter-003'").first();
+  assert.equal((await payload(await call(env, '/api/levels'))).data.total, 29);
+  assert.deepEqual(await env.DB.prepare("SELECT * FROM game_levels WHERE id = 'starter-003'").first(), before);
+  assert.equal(await env.DB.prepare("SELECT id FROM game_levels WHERE id = 'starter-002'").first(), null);
+  await env.DB.prepare("UPDATE game_levels SET title = 'После обновления' WHERE id = 'starter-001'").run();
+  await call(env, '/api/levels'); assert.equal((await env.DB.prepare("SELECT title FROM game_levels WHERE id = 'starter-001'").first()).title, 'После обновления'); env.DB.close();
+});
+
+test('Resuming a four-meme run saves its score once and starts a nine-meme run instead of returning the obsolete snapshot', async () => {
+  const env = setup(); await register(env, owner, 'СтарыйСеанс'); await fourMemeStarterFixture(env);
+  const old = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data; assert.ok(old.challenge.target.id.startsWith('jai-'));
+  await env.DB.prepare('UPDATE game_runs SET score = 275 WHERE id = ?').bind(old.runId).run();
+  await env.DB.prepare("DELETE FROM game_config WHERE key = 'video-pack-v2'").run();
+  const fresh = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data;
+  assert.notEqual(fresh.runId, old.runId); assert.ok(fresh.challenge.target.id.startsWith('part2-'));
+  const repeated = (await payload(await call(env, '/api/runs', 'POST', {}, owner))).data; assert.equal(repeated.runId, fresh.runId);
+  const profile = (await payload(await call(env, '/api/me', 'GET', undefined, owner))).data.profile;
+  assert.equal(profile.bestScore, 275); assert.equal(profile.gamesPlayed, 1); env.DB.close();
 });
